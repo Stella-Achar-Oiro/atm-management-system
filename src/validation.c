@@ -26,31 +26,40 @@ int validateDate(int month, int day, int year) {
     return VALID;
 }
 
-struct ValidationResult validateDateWithRetry(int* month, int* day, int* year) {
-    int retries = 0;
+struct ValidationResult getDateInput(int* month, int* day, int* year) {
     struct ValidationResult result = {0, NULL};
-    
-    while (retries < MAX_RETRIES) {
-        printf("\nEnter date (mm/dd/yyyy): ");
-        if (scanf("%d/%d/%d", month, day, year) != 3) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid date format! Use mm/dd/yyyy (%d attempts remaining)\n", 
-                   MAX_RETRIES - retries - 1);
-            retries++;
-            continue;
-        }
+    char dateStr[20];
 
-        if (validateDate(*month, *day, *year) == VALID) {
-            result.isValid = 1;
-            return result;
-        }
-
-        printf("\n\t\t✖ Invalid date! (%d attempts remaining)\n",
-               MAX_RETRIES - retries - 1);
-        retries++;
+    printf("\nEnter date (mm/dd/yyyy): ");
+    if (scanf("%s", dateStr) != 1) {
+        clearInputBuffer();
+        printf("\n\t\t✖ Invalid input format!\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        getchar();
+        result.message = "format_error";
+        return result;
     }
 
-    result.message = "\n\t\t✖ Maximum attempts exceeded for date input.";
+    // Check format using sscanf
+    if (sscanf(dateStr, "%d/%d/%d", month, day, year) != 3) {
+        printf("\n\t\t✖ Invalid date format! Please use mm/dd/yyyy\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        clearInputBuffer();
+        getchar();
+        result.message = "format_error";
+        return result;
+    }
+
+    if (validateDate(*month, *day, *year) != VALID) {
+        printf("\n\t\t✖ Invalid date! Please enter a valid date.\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        clearInputBuffer();
+        getchar();
+        result.message = "invalid_date";
+        return result;
+    }
+
+    result.isValid = 1;
     return result;
 }
 
@@ -61,31 +70,55 @@ int validateAccountNumber(int accountNum) {
     return VALID;
 }
 
-struct ValidationResult validateAccountNumberWithRetry(int* accountNum) {
-    int retries = 0;
+struct ValidationResult getAccountNumberInput(int* accountNum) {
     struct ValidationResult result = {0, NULL};
-    
-    while (retries < MAX_RETRIES) {
-        printf("\nEnter account number (5 digits): ");
-        if (scanf("%d", accountNum) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid format! (%d attempts remaining)\n",
-                   MAX_RETRIES - retries - 1);
-            retries++;
-            continue;
-        }
 
-        if (validateAccountNumber(*accountNum) == VALID) {
-            result.isValid = 1;
-            return result;
-        }
-
-        printf("\n\t\t✖ Account number must be 5 digits! (%d attempts remaining)\n",
-               MAX_RETRIES - retries - 1);
-        retries++;
+    printf("\nEnter account number (5 digits): ");
+    if (scanf("%d", accountNum) != 1) {
+        clearInputBuffer();
+        printf("\n\t\t✖ Invalid format! Account number must be numeric.\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        getchar();
+        result.message = "format_error";
+        return result;
     }
 
-    result.message = "\n\t\t✖ Maximum attempts exceeded for account number.";
+    if (validateAccountNumber(*accountNum) != VALID) {
+        printf("\n\t\t✖ Account number must be exactly 5 digits.\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        clearInputBuffer();
+        getchar();
+        result.message = "invalid_number";
+        return result;
+    }
+
+    result.isValid = 1;
+    return result;
+}
+
+struct ValidationResult getPhoneInput(char* phone) {
+    struct ValidationResult result = {0, NULL};
+
+    printf("\nEnter phone number: ");
+    if (scanf("%s", phone) != 1) {
+        clearInputBuffer();
+        printf("\n\t\t✖ Invalid input format!\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        getchar();
+        result.message = "format_error";
+        return result;
+    }
+
+    if (validatePhone(phone) != VALID) {
+        printf("\n\t\t✖ Invalid phone number! Use only digits, +, and -\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        clearInputBuffer();
+        getchar();
+        result.message = "invalid_phone";
+        return result;
+    }
+
+    result.isValid = 1;
     return result;
 }
 
@@ -102,11 +135,64 @@ int validatePhone(const char* phone) {
     return VALID;
 }
 
+struct ValidationResult getAmountInput(double* amount) {
+    struct ValidationResult result = {0, NULL};
+
+    printf("\nEnter amount: $");
+    if (scanf("%lf", amount) != 1) {
+        clearInputBuffer();
+        printf("\n\t\t✖ Invalid amount format!\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        getchar();
+        result.message = "format_error";
+        return result;
+    }
+
+    if (validateAmount(*amount) != VALID) {
+        printf("\n\t\t✖ Invalid amount! Must be between $%.2f and $%.2f\n", 
+               MIN_AMOUNT, MAX_AMOUNT);
+        printf("\n\t\tPress any key to return to main menu...");
+        clearInputBuffer();
+        getchar();
+        result.message = "invalid_amount";
+        return result;
+    }
+
+    result.isValid = 1;
+    return result;
+}
+
 int validateAmount(double amount) {
     if (amount < MIN_AMOUNT || amount > MAX_AMOUNT) {
         return INVALID_AMOUNT;
     }
     return VALID;
+}
+
+struct ValidationResult getCountryInput(char* country) {
+    struct ValidationResult result = {0, NULL};
+
+    printf("\nEnter country: ");
+    if (scanf("%s", country) != 1) {
+        clearInputBuffer();
+        printf("\n\t\t✖ Invalid input format!\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        getchar();
+        result.message = "format_error";
+        return result;
+    }
+
+    if (validateCountry(country) != VALID) {
+        printf("\n\t\t✖ Invalid country name! Use only letters, spaces, and hyphens.\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        clearInputBuffer();
+        getchar();
+        result.message = "invalid_country";
+        return result;
+    }
+
+    result.isValid = 1;
+    return result;
 }
 
 int validateCountry(const char* country) {
@@ -122,6 +208,36 @@ int validateCountry(const char* country) {
     return VALID;
 }
 
+struct ValidationResult getAccountTypeInput(char* accountType) {
+    struct ValidationResult result = {0, NULL};
+
+    printf("\nChoose the type of account:\n");
+    printf("\t-> saving\n\t-> current\n\t-> fixed01(for 1 year)\n");
+    printf("\t-> fixed02(for 2 years)\n\t-> fixed03(for 3 years)\n");
+    printf("\nEnter your choice: ");
+    
+    if (scanf("%s", accountType) != 1) {
+        clearInputBuffer();
+        printf("\n\t\t✖ Invalid input format!\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        getchar();
+        result.message = "format_error";
+        return result;
+    }
+
+    if (validateAccountType(accountType) != VALID) {
+        printf("\n\t\t✖ Invalid account type! Please choose from the list.\n");
+        printf("\n\t\tPress any key to return to main menu...");
+        clearInputBuffer();
+        getchar();
+        result.message = "invalid_type";
+        return result;
+    }
+
+    result.isValid = 1;
+    return result;
+}
+
 int validateAccountType(const char* accountType) {
     const char* validTypes[] = {"saving", "current", "fixed01", "fixed02", "fixed03"};
     int numTypes = sizeof(validTypes) / sizeof(validTypes[0]);
@@ -132,70 +248,4 @@ int validateAccountType(const char* accountType) {
         }
     }
     return INVALID_ACCOUNT_TYPE;
-}
-
-int getValidatedInput(const char* prompt, const char* format, void* var, int (*validator)(void*)) {
-    int retries = 0;
-    
-    while (retries < MAX_RETRIES) {
-        printf("%s", prompt);
-        if (scanf(format, var) != 1) {
-            clearInputBuffer();
-            printf("Invalid input format. Please try again (%d attempts remaining).\n", 
-                   MAX_RETRIES - retries - 1);
-            retries++;
-            continue;
-        }
-        
-        clearInputBuffer();
-        if (validator && validator(var) != VALID) {
-            printf("Invalid input. Please try again (%d attempts remaining).\n", 
-                   MAX_RETRIES - retries - 1);
-            retries++;
-            continue;
-        }
-        
-        return VALID;
-    }
-    
-    return -1; // Max retries exceeded
-}
-
-struct ValidationResult getDateInput(int* month, int* day, int* year) {
-    struct ValidationResult result = {0, NULL};
-    char dateStr[20];
-    int retries = 0;
-
-    while (retries < MAX_RETRIES) {
-        printf("\nEnter date (mm/dd/yyyy): ");
-        if (scanf("%s", dateStr) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Error reading input. Please try again (%d attempts remaining)\n", 
-                   MAX_RETRIES - retries - 1);
-            retries++;
-            continue;
-        }
-
-        // Check format using sscanf
-        if (sscanf(dateStr, "%d/%d/%d", month, day, year) != 3) {
-            printf("\n\t\t✖ Invalid date format! Please use mm/dd/yyyy (%d attempts remaining)\n", 
-                   MAX_RETRIES - retries - 1);
-            clearInputBuffer();
-            retries++;
-            continue;
-        }
-
-        // Validate the date values
-        if (validateDate(*month, *day, *year) == VALID) {
-            result.isValid = 1;
-            return result;
-        }
-
-        printf("\n\t\t✖ Invalid date! Please enter a valid date (%d attempts remaining)\n", 
-               MAX_RETRIES - retries - 1);
-        retries++;
-    }
-
-    result.message = "\n\t\t✖ Maximum attempts exceeded. Returning to main menu...";
-    return result;
 }

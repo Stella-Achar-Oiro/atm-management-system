@@ -12,7 +12,6 @@
 #define USERS "./data/users.txt"
 #define DB_FILE "./data/atm.db"
 
-
 // Validation constants
 #define MAX_NAME_LENGTH 50
 #define MAX_PHONE_LENGTH 15
@@ -61,23 +60,28 @@ struct ValidationResult {
     const char* message;
 };
 
-// Function declarations
+// Validation function declarations
 void clearInputBuffer(void);
 int validateDate(int month, int day, int year);
-struct ValidationResult validateDateWithRetry(int* month, int* day, int* year);
 int validateAccountNumber(int accountNum);
-struct ValidationResult validateAccountNumberWithRetry(int* accountNum);
 int validatePhone(const char* phone);
 int validateAmount(double amount);
 int validateCountry(const char* country);
 int validateAccountType(const char* accountType);
-int getValidatedInput(const char* prompt, const char* format, void* var, int (*validator)(void*));
+
+// New input validation functions
+struct ValidationResult getDateInput(int* month, int* day, int* year);
+struct ValidationResult getAccountNumberInput(int* accountNum);
+struct ValidationResult getPhoneInput(char* phone);
+struct ValidationResult getAmountInput(double* amount);
+struct ValidationResult getCountryInput(char* country);
+struct ValidationResult getAccountTypeInput(char* accountType);
 
 // Authentication functions
 void loginMenu(char a[50], char pass[50]);
 void registerMenu(char a[50], char pass[50]);
-const char *getPassword(struct User u);           // Original auth function
-const char *getEncryptedPassword(struct User u);  // New encrypted version
+const char *getPassword(struct User u);
+const char *getEncryptedPassword(struct User u);
 
 // Password encryption functions
 int updatePasswordsInFile(void);

@@ -113,9 +113,8 @@ void createNewAcc(struct User u) {
     struct Record r;
     struct Record cr;
     char userName[50];
-    struct ValidationResult result;
     char phoneStr[MAX_PHONE_LENGTH + 1];
-    int status;
+    struct ValidationResult result;
     
     FILE *pf = fopen(RECORDS, "a+");
     if (pf == NULL) {
@@ -126,108 +125,73 @@ void createNewAcc(struct User u) {
         return;
     }
 
-    // Get next available ID
     r.id = getNextRecordId(pf);
     r.userId = u.id;
 
     system("clear");
     printf("\t\t\t===== New record =====\n");
 
-    // Date validation
-    do {
-        printf("\nEnter today's date(mm/dd/yyyy): ");
-        if (scanf("%d/%d/%d", &r.deposit.month, &r.deposit.day, &r.deposit.year) != 3) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid date format! Use mm/dd/yyyy\n");
-            continue;
-        }
-        status = validateDate(r.deposit.month, r.deposit.day, r.deposit.year);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid date! Please enter a valid date.\n");
-        }
-    } while (status != VALID);
+    // Get and validate date
+    result = getDateInput(&r.deposit.month, &r.deposit.day, &r.deposit.year);
+    if (!result.isValid) {
+        fclose(pf);
+        mainMenu(u);
+        return;
+    }
 
-    // Account number validation
-    do {
-        printf("\nEnter the account number (5 digits): ");
-        if (scanf("%d", &r.accountNbr) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid account number format!\n");
-            continue;
-        }
-        status = validateAccountNumber(r.accountNbr);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid account number! Must be 5 digits.\n");
-            continue;
-        }
+    // Get and validate account number
+    result = getAccountNumberInput(&r.accountNbr);
+    if (!result.isValid) {
+        fclose(pf);
+        mainMenu(u);
+        return;
+    }
 
-        // Check for duplicate account numbers
-        rewind(pf);
-        int isDuplicate = 0;
-        while (getAccountFromFile(pf, userName, &cr)) {
-            if (cr.accountNbr == r.accountNbr) {
-                printf("\n\t\t✖ This account number already exists!\n");
-                isDuplicate = 1;
-                break;
-            }
+    // Check for duplicate account numbers
+    rewind(pf);
+    while (getAccountFromFile(pf, userName, &cr)) {
+        if (cr.accountNbr == r.accountNbr) {
+            printf("\n\t\t✖ This account number already exists!\n");
+            printf("\nPress any key to return to main menu...");
+            getchar();
+            fclose(pf);
+            mainMenu(u);
+            return;
         }
-        if (isDuplicate) continue;
-        
-        break;
-    } while (1);
+    }
 
-    // Country validation
-    do {
-        printf("\nEnter the country: ");
-        scanf("%s", r.country);
-        clearInputBuffer();
-        status = validateCountry(r.country);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid country name! Use only letters, spaces, and hyphens.\n");
-        }
-    } while (status != VALID);
+    // Get and validate country
+    result = getCountryInput(r.country);
+    if (!result.isValid) {
+        fclose(pf);
+        mainMenu(u);
+        return;
+    }
 
-    // Phone validation
-    do {
-        printf("\nEnter the phone number: ");
-        scanf("%s", phoneStr);
-        clearInputBuffer();
-        status = validatePhone(phoneStr);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid phone number! Use only digits, +, and -\n");
-            continue;
-        }
-        r.phone = atoi(phoneStr);  // Store as integer after validation
-    } while (status != VALID);
+    // Get and validate phone
+    result = getPhoneInput(phoneStr);
+    if (!result.isValid) {
+        fclose(pf);
+        mainMenu(u);
+        return;
+    }
+    r.phone = atoi(phoneStr);
 
-    // Amount validation
-    do {
-        printf("\nEnter amount to deposit: $");
-        if (scanf("%lf", &r.amount) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid amount format!\n");
-            continue;
-        }
-        status = validateAmount(r.amount);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid amount! Must be between $%.2f and $%.2f\n", 
-                   MIN_AMOUNT, MAX_AMOUNT);
-        }
-    } while (status != VALID);
+    // Get and validate amount
+    result = getAmountInput(&r.amount);
+    if (!result.isValid) {
+        fclose(pf);
+        mainMenu(u);
+        return;
+    }
 
-    // Account type validation
-    do {
-        printf("\nChoose the type of account:\n");
-        printf("\t-> saving\n\t-> current\n\t-> fixed01(for 1 year)\n");
-        printf("\t-> fixed02(for 2 years)\n\t-> fixed03(for 3 years)\n");
-        printf("\nEnter your choice: ");
-        scanf("%s", r.accountType);
-        clearInputBuffer();
-        status = validateAccountType(r.accountType);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid account type! Please choose from the list.\n");
-        }
-    } while (status != VALID);
+    // Get and validate account type
+    result = getAccountTypeInput(r.accountType);
+    if (!result.isValid) {
+        fclose(pf);
+        mainMenu(u);
+        return;
+    }
 
     // Save the account
     fseek(pf, 0, SEEK_END);
@@ -235,7 +199,9 @@ void createNewAcc(struct User u) {
     fclose(pf);
 
     printf("\n\t\t✔ Account created successfully!\n");
-    success(u);
+    printf("\nPress any key to return to main menu...");
+    getchar();
+    mainMenu(u);
 }
 
 void checkAllAccounts(struct User u)
