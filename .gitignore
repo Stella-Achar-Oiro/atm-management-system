@@ -1,0 +1,16 @@
+# Compiled files
+*.o
+atm
+build/
+
+# Database files
+data/*.db
+data/*.txt
+
+# Temporary files
+*~
+*.swp
+.DS_Store
+
+# Build directory
+build/
