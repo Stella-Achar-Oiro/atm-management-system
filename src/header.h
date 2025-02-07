@@ -66,6 +66,9 @@ int initDatabase(void);
 int insertUser(const char* username, const char* hashed_password);
 int verifyUser(const char* username, const char* hashed_password);
 
+// Migration functions
+void runMigration(void);
+
 // Helper functions
 int canMakeTransaction(const char* accountType);
 double calculateInterest(const char* accountType, double amount);
