@@ -11,6 +11,15 @@ void cleanup() {
     }
 }
 
+void printUsage() {
+    printf("\nATM Management System - Usage:\n");
+    printf("./atm [OPTION]\n\n");
+    printf("Options:\n");
+    printf("  --migrate            Migrate data to SQLite database\n");
+    printf("  --encrypt-passwords  Encrypt passwords in users.txt\n");
+    printf("  --help              Display this help message\n\n");
+}
+
 void mainMenu(struct User u)
 {
     int option;
@@ -129,41 +138,55 @@ void initMenu(struct User *u)
     }
 }
 
-
 int main(int argc, char *argv[]) {
     struct User u;
     pid_t pid;
     
-    // Initialize database
-    if (initDatabase() != 0) {
-        printf("Error initializing database. Exiting...\n");
-        return 1;
-    }
-
-    // Check for migration flag
-    if (argc > 1 && strcmp(argv[1], "--migrate") == 0) {
-        runMigration();
-        return 0;
+    // Command line argument handling
+    if (argc > 1) {
+        printf("Processing command: %s\n", argv[1]);  // Debug output
+        
+        if (strcmp(argv[1], "--help") == 0) {
+            printUsage();
+            return 0;
+        }
+        else if (strcmp(argv[1], "--encrypt-passwords") == 0) {
+            printf("Starting password encryption process...\n");
+            int result = updatePasswordsInFile();
+            if (result == 0) {
+                printf("Password encryption completed successfully!\n");
+            } else {
+                printf("Error during password encryption! (Error code: %d)\n", result);
+            }
+            return result;
+        }
+        else if (strcmp(argv[1], "--migrate") == 0) {
+            if (initDatabase() != 0) {
+                printf("Error initializing database. Exiting...\n");
+                return 1;
+            }
+            runMigration();
+            return 0;
+        }
+        else {
+            printf("Unknown option: %s\n", argv[1]);
+            printUsage();
+            return 1;
+        }
     }
     
-    // Register cleanup handler
+    // Normal ATM operation...
     atexit(cleanup);
-    
-    // Initialize user
     initMenu(&u);
     
-    // Fork for notification listener
     pid = fork();
-    
     if (pid < 0) {
         perror("Fork failed");
         exit(1);
     } else if (pid == 0) {
-        // Child process - run notification listener
         startNotificationListener(u.name);
         exit(0);
     } else {
-        // Parent process
         notification_pid = pid;
         mainMenu(u);
     }
