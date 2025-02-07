@@ -130,7 +130,7 @@ void initMenu(struct User *u)
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
     struct User u;
     pid_t pid;
     
@@ -138,6 +138,12 @@ int main() {
     if (initDatabase() != 0) {
         printf("Error initializing database. Exiting...\n");
         return 1;
+    }
+
+    // Check for migration flag
+    if (argc > 1 && strcmp(argv[1], "--migrate") == 0) {
+        runMigration();
+        return 0;
     }
     
     // Register cleanup handler
