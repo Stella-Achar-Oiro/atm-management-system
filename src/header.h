@@ -1,4 +1,3 @@
-// Contents: Header file for the ATM system
 #ifndef HEADER_H
 #define HEADER_H
 
@@ -39,7 +38,12 @@ struct User {
 // Authentication functions
 void loginMenu(char a[50], char pass[50]);
 void registerMenu(char a[50], char pass[50]);
-const char *getPassword(struct User u);
+const char *getPassword(struct User u);           // Original auth function
+const char *getEncryptedPassword(struct User u);  // New encrypted version
+
+// Password encryption functions
+int updatePasswordsInFile(void);
+int isLikelyHash(const char* str);
 
 // System functions
 void createNewAcc(struct User u);
@@ -55,11 +59,7 @@ void transferOwnership(struct User u);
 void startNotificationListener(const char* username);
 void sendTransferNotification(const char* sender, const char* receiver, 
                             int accountNum, double balance, const char* accountType);
-void handle_signal(int sig);
-
-// Encryption functions
-void hashPassword(const char* password, char* output);
-void hashToString(unsigned char* hash, char* output);
+void handle_signal(int sig __attribute__((unused)));
 
 // Database functions
 int initDatabase(void);
@@ -74,6 +74,7 @@ int canMakeTransaction(const char* accountType);
 double calculateInterest(const char* accountType, double amount);
 int findUserIdByName(const char* userName);
 int userExists(const char* userName);
+void hashPassword(const char* password, char* output);
 
 // File operations
 int getAccountFromFile(FILE *ptr, char name[50], struct Record *r);
