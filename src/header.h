@@ -12,6 +12,26 @@
 #define USERS "./data/users.txt"
 #define DB_FILE "./data/atm.db"
 
+
+// Validation constants
+#define MAX_NAME_LENGTH 50
+#define MAX_PHONE_LENGTH 15
+#define MIN_ACCOUNT_NUMBER 10000
+#define MAX_ACCOUNT_NUMBER 99999
+#define MIN_AMOUNT 0.01
+#define MAX_AMOUNT 1000000.00
+#define MAX_RETRIES 3
+
+// Validation return codes
+#define VALID 0
+#define INVALID_DATE -1
+#define INVALID_ACCOUNT_NUMBER -2
+#define INVALID_PHONE -3
+#define INVALID_AMOUNT -4
+#define INVALID_COUNTRY -5
+#define INVALID_ACCOUNT_TYPE -6
+
+// Existing structs
 struct Date {
     int month, day, year;
 };
@@ -35,6 +55,24 @@ struct User {
     char password[50];
 };
 
+// ValidationResult struct
+struct ValidationResult {
+    int isValid;
+    const char* message;
+};
+
+// Function declarations
+void clearInputBuffer(void);
+int validateDate(int month, int day, int year);
+struct ValidationResult validateDateWithRetry(int* month, int* day, int* year);
+int validateAccountNumber(int accountNum);
+struct ValidationResult validateAccountNumberWithRetry(int* accountNum);
+int validatePhone(const char* phone);
+int validateAmount(double amount);
+int validateCountry(const char* country);
+int validateAccountType(const char* accountType);
+int getValidatedInput(const char* prompt, const char* format, void* var, int (*validator)(void*));
+
 // Authentication functions
 void loginMenu(char a[50], char pass[50]);
 void registerMenu(char a[50], char pass[50]);
@@ -44,6 +82,9 @@ const char *getEncryptedPassword(struct User u);  // New encrypted version
 // Password encryption functions
 int updatePasswordsInFile(void);
 int isLikelyHash(const char* str);
+
+int getNextUserId(void);
+int saveUserToDb(const char* username, const char* password);
 
 // System functions
 void createNewAcc(struct User u);

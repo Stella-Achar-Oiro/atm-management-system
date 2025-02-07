@@ -88,6 +88,7 @@ void initMenu(struct User *u)
 {
     int r = 0;
     int option;
+    char hashed_password[SHA256_DIGEST_LENGTH * 2 + 1];
 
     while (!r) {
         system("clear");
@@ -113,7 +114,9 @@ void initMenu(struct User *u)
         {
         case 1:
             loginMenu(u->name, u->password);
-            if (strcmp(u->password, getPassword(*u)) == 0) {
+            // Hash the password for comparison
+            hashPassword(u->password, hashed_password);
+            if (verifyUser(u->name, hashed_password)) {
                 printf("\n\n\t\t✔ Login successful!");
                 printf("\n\t\tWelcome back, %s!\n", u->name);
                 sleep(2);

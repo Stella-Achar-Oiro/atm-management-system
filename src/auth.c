@@ -1,9 +1,63 @@
 #include <termios.h>
 #include "header.h"
 
+int getNextUserId() {
+    FILE *fp = fopen(USERS, "r");
+    int maxId = 0;
+    struct User temp;
+    
+    if (fp == NULL) {
+        return 1; // Start with ID 1 if file doesn't exist
+    }
+    
+    while (fscanf(fp, "%d %s %s", &temp.id, temp.name, temp.password) != EOF) {
+        if (temp.id > maxId) {
+            maxId = temp.id;
+        }
+    }
+    
+    fclose(fp);
+    return maxId + 1;
+}
+
+int saveUserToDb(const char* username, const char* password) {
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    char hashed_password[SHA256_DIGEST_LENGTH * 2 + 1];
+    
+    // Hash the password
+    hashPassword(password, hashed_password);
+    
+    // Open database
+    if (sqlite3_open(DB_FILE, &db) != SQLITE_OK) {
+        return -1;
+    }
+    
+    // Prepare SQL statement
+    const char *sql = "INSERT INTO users (username, password) VALUES (?, ?);";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) != SQLITE_OK) {
+        sqlite3_close(db);
+        return -1;
+    }
+    
+    // Bind values
+    sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, hashed_password, -1, SQLITE_STATIC);
+    
+    // Execute statement
+    int rc = sqlite3_step(stmt);
+    
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    
+    return (rc == SQLITE_DONE) ? 0 : -1;
+}
+
+// Modify the registerMenu function in auth.c
 void registerMenu(char name[50], char pass[50]) {
     struct termios oflags, nflags;
-    char hashed_password[SHA256_DIGEST_LENGTH * 2 + 1];  // For hex string
+    char hashed_password[SHA256_DIGEST_LENGTH * 2 + 1];
+    FILE *fp;
     
     system("clear");
     printf("\n\n\t\t\t==== Register New User ====\n");
@@ -23,7 +77,7 @@ void registerMenu(char name[50], char pass[50]) {
         return;
     }
     
-    // Disable echo for password input
+    // Get password (with hidden input)
     tcgetattr(fileno(stdin), &oflags);
     nflags = oflags;
     nflags.c_lflag &= ~ECHO;
@@ -42,13 +96,30 @@ void registerMenu(char name[50], char pass[50]) {
         perror("tcsetattr");
         return;
     }
-    
-    // Hash password and store in database
-    hashPassword(pass, hashed_password);
-    if (insertUser(name, hashed_password) < 0) {
-        printf("\n\t\tError registering user! Please try again.\n");
+
+    // Initialize database if it doesn't exist
+    if (initDatabase() != 0) {
+        printf("\n\t\tError initializing database!\n");
         return;
     }
+    
+    // Save to database
+    if (saveUserToDb(name, pass) != 0) {
+        printf("\n\t\tError saving to database! Please try again.\n");
+        return;
+    }
+    
+    // Save to text file
+    fp = fopen(USERS, "a");
+    if (fp == NULL) {
+        printf("\n\t\tError opening users file!\n");
+        return;
+    }
+    
+    int userId = getNextUserId();
+    hashPassword(pass, hashed_password);
+    fprintf(fp, "%d %s %s\n", userId, name, hashed_password);
+    fclose(fp);
     
     printf("\n\n\t\t\tRegistration successful!\n");
     printf("\n\n\t\t\tPress any key to continue...");
@@ -78,15 +149,16 @@ const char *getPassword(struct User u) {
     return "no user found";
 }
 
-void loginMenu(char a[50], char pass[50]) {
+void loginMenu(char name[50], char pass[50]) {
     struct termios oflags, nflags;
-    char hashed_password[SHA256_DIGEST_LENGTH * 2 + 1];
 
     system("clear");
-    printf("\n\n\n\t\t\t\t   Bank Management System\n\t\t\t\t\t User Login:");
-    scanf("%s", a);
+    printf("\n\n\n\t\t\t\t   Bank Management System");
+    printf("\n\t\t\t\t\t User Login: ");
+    scanf("%s", name);
+    clearInputBuffer();  // Clear any extra input
 
-    // Disable echo for password
+    // Only disable echo for password input
     tcgetattr(fileno(stdin), &oflags);
     nflags = oflags;
     nflags.c_lflag &= ~ECHO;
@@ -97,25 +169,13 @@ void loginMenu(char a[50], char pass[50]) {
         return;
     }
 
-    printf("\n\n\n\n\n\t\t\t\tEnter the password to login:");
+    printf("\n\n\n\n\n\t\t\t\tEnter the password to login: ");
     scanf("%s", pass);
+    clearInputBuffer();
 
-    // Hash the password for verification
-    hashPassword(pass, hashed_password);
-
-    // Verify against database
-    if (!verifyUser(a, hashed_password)) {
-        printf("\n\t\tInvalid username or password!\n");
-        printf("\n\t\tPress any key to continue...");
-        getchar();
-        getchar();
-        loginMenu(a, pass);
-        return;
-    }
-
-    // Restore terminal
+    // Restore terminal settings
     if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0) {
         perror("tcsetattr");
-        return;
     }
 }
+
