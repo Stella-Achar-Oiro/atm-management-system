@@ -5,12 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sqlite3.h>
-#include <openssl/sha.h>
+#include <crypt.h>
+#include <time.h>
 
-// File paths
-#define RECORDS "./data/records.txt"
-#define USERS "./data/users.txt"
+// Database configuration
 #define DB_FILE "./data/atm.db"
+
+// Password configuration
+#define SALT_LENGTH 16
+#define BCRYPT_COST 12  // Work factor for bcrypt
+#define HASH_LENGTH 64  // bcrypt hash length
 
 // Validation constants
 #define MAX_NAME_LENGTH 50
@@ -30,28 +34,23 @@
 #define INVALID_COUNTRY -5
 #define INVALID_ACCOUNT_TYPE -6
 
-// Existing structs
-struct Date {
-    int month, day, year;
-};
-
-struct Record {
-    int id;
-    int userId;
-    char name[100];
-    char country[100];
-    int phone;
-    char accountType[10];
-    int accountNbr;
-    double amount;
-    struct Date deposit;
-    struct Date withdraw;
-};
-
+// Database structs
 struct User {
     int id;
-    char name[50];
-    char password[50];
+    char username[MAX_NAME_LENGTH];
+    char password[HASH_LENGTH];  // Store bcrypt hash
+    char created_at[26];  // ISO 8601 timestamp
+};
+
+struct Account {
+    int id;
+    int user_id;
+    int account_number;
+    char account_type[10];
+    double balance;
+    char country[100];
+    char phone[MAX_PHONE_LENGTH];
+    char created_at[26];  // ISO 8601 timestamp
 };
 
 // ValidationResult struct
@@ -60,7 +59,7 @@ struct ValidationResult {
     const char* message;
 };
 
-// Validation function declarations
+// Validation functions
 void clearInputBuffer(void);
 int validateDate(int month, int day, int year);
 int validateAccountNumber(int accountNum);
@@ -69,7 +68,7 @@ int validateAmount(double amount);
 int validateCountry(const char* country);
 int validateAccountType(const char* accountType);
 
-// New input validation functions
+// Input validation functions
 struct ValidationResult getDateInput(int* month, int* day, int* year);
 struct ValidationResult getAccountNumberInput(int* accountNum);
 struct ValidationResult getPhoneInput(char* phone);
@@ -81,14 +80,8 @@ struct ValidationResult getAccountTypeInput(char* accountType);
 void loginMenu(char a[50], char pass[50]);
 void registerMenu(char a[50], char pass[50]);
 const char *getPassword(struct User u);
-const char *getEncryptedPassword(struct User u);
-
-// Password encryption functions
-int updatePasswordsInFile(void);
-int isLikelyHash(const char* str);
-
-int getNextUserId(void);
-int saveUserToDb(const char* username, const char* password);
+void hashPassword(const char* password, char* output);
+int verifyPassword(const char* password, const char* hash);
 
 // System functions
 void createNewAcc(struct User u);
@@ -110,19 +103,11 @@ void handle_signal(int sig __attribute__((unused)));
 int initDatabase(void);
 int insertUser(const char* username, const char* hashed_password);
 int verifyUser(const char* username, const char* hashed_password);
-
-// Migration functions
-void runMigration(void);
-
-// Helper functions
-int canMakeTransaction(const char* accountType);
-double calculateInterest(const char* accountType, double amount);
-int findUserIdByName(const char* userName);
-int userExists(const char* userName);
-void hashPassword(const char* password, char* output);
-
-// File operations
-int getAccountFromFile(FILE *ptr, char name[50], struct Record *r);
-void saveAccountToFile(FILE *ptr, struct User u, struct Record r);
+int getNextAccountId(void);
+int saveUser(const struct User* user);
+int getUser(const char* username, struct User* user);
+int createAccount(struct Account* account);
+int getAccount(int account_number, struct Account* account);
+int updateBalance(int account_number, double new_balance);
 
 #endif /* HEADER_H */

@@ -15,8 +15,6 @@ void printUsage() {
     printf("\nATM Management System - Usage:\n");
     printf("./atm [OPTION]\n\n");
     printf("Options:\n");
-    printf("  --migrate            Migrate data to SQLite database\n");
-    printf("  --encrypt-passwords  Encrypt passwords in users.txt\n");
     printf("  --help              Display this help message\n\n");
 }
 
@@ -28,7 +26,7 @@ void mainMenu(struct User u)
         printf("\n\n\t\t╔════════════════════════════╗");
         printf("\n\t\t║         ATM SYSTEM         ║");
         printf("\n\t\t╚════════════════════════════╝\n");
-        printf("\n\t\t-->> Welcome, %s <<--\n", u.name);
+        printf("\n\t\t-->> Welcome, %s <<--\n", u.username);
         printf("\n\t\tChoose an option below:");
         printf("\n\t\t╔════════════════════════════╗");
         printf("\n\t\t║ 1. Create New Account      ║");
@@ -88,7 +86,7 @@ void initMenu(struct User *u)
 {
     int r = 0;
     int option;
-    char hashed_password[SHA256_DIGEST_LENGTH * 2 + 1];
+    char hashed_password[HASH_LENGTH];
 
     while (!r) {
         system("clear");
@@ -113,12 +111,12 @@ void initMenu(struct User *u)
         switch (option)
         {
         case 1:
-            loginMenu(u->name, u->password);
+            loginMenu(u->username, u->password);
             // Hash the password for comparison
             hashPassword(u->password, hashed_password);
-            if (verifyUser(u->name, hashed_password)) {
+            if (verifyUser(u->username, hashed_password)) {
                 printf("\n\n\t\t✔ Login successful!");
-                printf("\n\t\tWelcome back, %s!\n", u->name);
+                printf("\n\t\tWelcome back, %s!\n", u->username);
                 sleep(2);
                 r = 1;
             } else {
@@ -127,7 +125,7 @@ void initMenu(struct User *u)
             }
             break;
         case 2:
-            registerMenu(u->name, u->password);
+            registerMenu(u->username, u->password);
             r = 1;
             break;
         case 3:
@@ -147,35 +145,20 @@ int main(int argc, char *argv[]) {
     
     // Command line argument handling
     if (argc > 1) {
-        printf("Processing command: %s\n", argv[1]);  // Debug output
-        
         if (strcmp(argv[1], "--help") == 0) {
             printUsage();
             return 0;
-        }
-        else if (strcmp(argv[1], "--encrypt-passwords") == 0) {
-            printf("Starting password encryption process...\n");
-            int result = updatePasswordsInFile();
-            if (result == 0) {
-                printf("Password encryption completed successfully!\n");
-            } else {
-                printf("Error during password encryption! (Error code: %d)\n", result);
-            }
-            return result;
-        }
-        else if (strcmp(argv[1], "--migrate") == 0) {
-            if (initDatabase() != 0) {
-                printf("Error initializing database. Exiting...\n");
-                return 1;
-            }
-            runMigration();
-            return 0;
-        }
-        else {
+        } else {
             printf("Unknown option: %s\n", argv[1]);
             printUsage();
             return 1;
         }
+    }
+    
+    // Initialize database
+    if (initDatabase() != 0) {
+        printf("Error initializing database. Exiting...\n");
+        return 1;
     }
     
     // Normal ATM operation...
@@ -187,7 +170,7 @@ int main(int argc, char *argv[]) {
         perror("Fork failed");
         exit(1);
     } else if (pid == 0) {
-        startNotificationListener(u.name);
+        startNotificationListener(u.username);
         exit(0);
     } else {
         notification_pid = pid;

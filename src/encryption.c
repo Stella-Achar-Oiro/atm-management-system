@@ -1,27 +1,47 @@
 #include "header.h"
-#include <openssl/evp.h>
+#include <unistd.h>
 
-void hashToString(unsigned char* hash, char* output) {
-    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        sprintf(output + (i * 2), "%02x", hash[i]);
+void generateSalt(char* salt) {
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./";
+    int charset_length = strlen(charset);
+    
+    // Seed the random number generator
+    srand(time(NULL) ^ (getpid() << 16));
+    
+    // Generate random salt
+    for (int i = 0; i < SALT_LENGTH - 1; i++) {
+        salt[i] = charset[rand() % charset_length];
     }
-    output[SHA256_DIGEST_LENGTH * 2] = '\0';
+    salt[SALT_LENGTH - 1] = '\0';
 }
 
 void hashPassword(const char* password, char* output) {
-    EVP_MD_CTX *mdctx;
-    const EVP_MD *md;
-    unsigned char hash[EVP_MAX_MD_SIZE];
-    unsigned int hash_len;
-
-    mdctx = EVP_MD_CTX_new();
-    md = EVP_sha256();
-
-    EVP_DigestInit_ex(mdctx, md, NULL);
-    EVP_DigestUpdate(mdctx, password, strlen(password));
-    EVP_DigestFinal_ex(mdctx, hash, &hash_len);
-
-    EVP_MD_CTX_free(mdctx);
+    char salt[SALT_LENGTH];
+    char settings[32];
     
-    hashToString(hash, output);
+    // Generate salt
+    generateSalt(salt);
+    
+    // Create bcrypt settings string
+    snprintf(settings, sizeof(settings), "$2b$%02d$%s", BCRYPT_COST, salt);
+    
+    // Hash the password using bcrypt
+    char* hash = crypt(password, settings);
+    if (hash == NULL) {
+        fprintf(stderr, "Error hashing password\n");
+        strncpy(output, "", HASH_LENGTH - 1);
+        return;
+    }
+    
+    // Copy the hash to output
+    strncpy(output, hash, HASH_LENGTH - 1);
+    output[HASH_LENGTH - 1] = '\0';
+}
+
+int verifyPassword(const char* password, const char* hash) {
+    char* computed_hash = crypt(password, hash);
+    if (computed_hash == NULL) {
+        return 0;  // Error in hashing
+    }
+    return strcmp(computed_hash, hash) == 0;
 }

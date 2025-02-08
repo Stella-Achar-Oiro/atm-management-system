@@ -1,181 +1,224 @@
 #include <termios.h>
+#include <unistd.h>
 #include "header.h"
 
 int getNextUserId() {
-    FILE *fp = fopen(USERS, "r");
-    int maxId = 0;
-    struct User temp;
-    
-    if (fp == NULL) {
-        return 1; // Start with ID 1 if file doesn't exist
-    }
-    
-    while (fscanf(fp, "%d %s %s", &temp.id, temp.name, temp.password) != EOF) {
-        if (temp.id > maxId) {
-            maxId = temp.id;
-        }
-    }
-    
-    fclose(fp);
-    return maxId + 1;
-}
-
-int saveUserToDb(const char* username, const char* password) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
-    char hashed_password[SHA256_DIGEST_LENGTH * 2 + 1];
+    int maxId = 0;
     
-    // Hash the password
-    hashPassword(password, hashed_password);
-    
-    // Open database
     if (sqlite3_open(DB_FILE, &db) != SQLITE_OK) {
         return -1;
     }
     
-    // Prepare SQL statement
-    const char *sql = "INSERT INTO users (username, password) VALUES (?, ?);";
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) != SQLITE_OK) {
-        sqlite3_close(db);
-        return -1;
+    const char *sql = "SELECT MAX(id) FROM users;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            maxId = sqlite3_column_int(stmt, 0);
+        }
     }
-    
-    // Bind values
-    sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, hashed_password, -1, SQLITE_STATIC);
-    
-    // Execute statement
-    int rc = sqlite3_step(stmt);
     
     sqlite3_finalize(stmt);
     sqlite3_close(db);
-    
-    return (rc == SQLITE_DONE) ? 0 : -1;
+    return maxId + 1;
 }
 
-// Modify the registerMenu function in auth.c
-void registerMenu(char name[50], char pass[50]) {
+int userExists(const char* username) {
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int exists = 0;
+    
+    if (sqlite3_open(DB_FILE, &db) != SQLITE_OK) {
+        return -1;
+    }
+    
+    const char *sql = "SELECT 1 FROM users WHERE username = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
+        
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            exists = 1;
+        }
+    }
+    
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return exists;
+}
+
+void registerMenu(char username[50], char pass[50]) {
     struct termios oflags, nflags;
-    char hashed_password[SHA256_DIGEST_LENGTH * 2 + 1];
-    FILE *fp;
+    char hashed_password[HASH_LENGTH];
+    char confirm_pass[50];
+    struct User newUser;
+    int c;
+    
+    // Clear buffers
+    memset(username, 0, 50);
+    memset(pass, 0, 50);
+    memset(confirm_pass, 0, 50);
+    memset(hashed_password, 0, sizeof(hashed_password));
+    memset(&newUser, 0, sizeof(struct User));  // Initialize newUser struct
+    
+    // Clear input buffer
+    while ((c = getchar()) != '\n' && c != EOF) { }
     
     system("clear");
     printf("\n\n\t\t\t==== Register New User ====\n");
-    
-    printf("\n\n\t\t\tEnter Username: ");
-    scanf("%s", name);
-    
-    // Check if username exists in database
-    char temp_pass[50] = "temp";
-    hashPassword(temp_pass, hashed_password);
-    if (verifyUser(name, hashed_password) != 0) {
-        printf("\n\t\tUsername already exists! Please choose another.\n");
-        printf("\n\t\tPress any key to continue...");
-        getchar();
-        getchar();
-        registerMenu(name, pass);
-        return;
-    }
-    
-    // Get password (with hidden input)
-    tcgetattr(fileno(stdin), &oflags);
+
+    // Username input with validation
+    do {
+        printf("\n\n\t\t\tEnter Username (3-50 characters): ");
+        if (scanf("%49s", username) != 1) {
+            while ((c = getchar()) != '\n' && c != EOF) { }
+            printf("\n\t\t✖ Invalid input!\n");
+            continue;
+        }
+        while ((c = getchar()) != '\n' && c != EOF) { }
+        
+        if (strlen(username) < 3) {
+            printf("\n\t\t✖ Username too short (minimum 3 characters)!\n");
+            continue;
+        }
+        
+        if (userExists(username)) {
+            printf("\n\t\t✖ Username already exists! Please choose another.\n");
+            continue;
+        }
+        break;
+    } while (1);
+
+    // Password input with hidden characters
+    printf("\n\t\t\tEnter Password: ");
+    tcgetattr(STDIN_FILENO, &oflags);
     nflags = oflags;
     nflags.c_lflag &= ~ECHO;
-    nflags.c_lflag |= ECHONL;
-
-    if (tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0) {
-        perror("tcsetattr");
-        return;
-    }
-
-    printf("\n\n\t\t\tEnter Password: ");
-    scanf("%s", pass);
-
-    // Restore terminal
-    if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0) {
-        perror("tcsetattr");
-        return;
-    }
-
-    // Initialize database if it doesn't exist
-    if (initDatabase() != 0) {
-        printf("\n\t\tError initializing database!\n");
+    tcsetattr(STDIN_FILENO, TCSANOW, &nflags);
+    scanf("%49s", pass);
+    tcsetattr(STDIN_FILENO, TCSANOW, &oflags);
+    printf("\n");  // Add newline after hidden password
+    
+    // Confirm password
+    printf("\n\t\t\tConfirm Password: ");
+    tcgetattr(STDIN_FILENO, &oflags);
+    nflags = oflags;
+    nflags.c_lflag &= ~ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &nflags);
+    scanf("%49s", confirm_pass);
+    tcsetattr(STDIN_FILENO, TCSANOW, &oflags);
+    printf("\n");  // Add newline after hidden password
+    
+    // Check if passwords match
+    if (strcmp(pass, confirm_pass) != 0) {
+        printf("\n\n\t\t✖ Passwords do not match!\n");
+        printf("\n\t\tPress Enter to try again...");
+        while ((c = getchar()) != '\n' && c != EOF) { }
+        getchar();
+        registerMenu(username, pass);
         return;
     }
     
-    // Save to database
-    if (saveUserToDb(name, pass) != 0) {
-        printf("\n\t\tError saving to database! Please try again.\n");
-        return;
+    // Create new user
+    strncpy(newUser.username, username, MAX_NAME_LENGTH - 1);
+    hashPassword(pass, newUser.password);
+    
+    if (saveUser(&newUser)) {
+        // Get the complete user data including ID
+        if (getUser(username, &newUser)) {
+            // Update the username and password for the calling function
+            strncpy(username, newUser.username, MAX_NAME_LENGTH - 1);
+            // Keep original password for login (no need to copy to itself)
+            printf("\n\n\t\t✔ Registration successful!\n");
+            printf("\n\t\tPress Enter to login...");
+            while ((c = getchar()) != '\n' && c != EOF) { }
+            getchar();
+            return;
+        }
     }
     
-    // Save to text file
-    fp = fopen(USERS, "a");
-    if (fp == NULL) {
-        printf("\n\t\tError opening users file!\n");
-        return;
-    }
-    
-    int userId = getNextUserId();
-    hashPassword(pass, hashed_password);
-    fprintf(fp, "%d %s %s\n", userId, name, hashed_password);
-    fclose(fp);
-    
-    printf("\n\n\t\t\tRegistration successful!\n");
-    printf("\n\n\t\t\tPress any key to continue...");
+    // If we get here, something went wrong
+    printf("\n\n\t\t✖ Registration failed. Please try again.\n");
+    printf("\n\t\tPress Enter to continue...");
+    while ((c = getchar()) != '\n' && c != EOF) { }
     getchar();
-    getchar();
+    registerMenu(username, pass);
+    return;
 }
 
 const char *getPassword(struct User u) {
-    static char hashed_password[SHA256_DIGEST_LENGTH * 2 + 1];  // For hex string
-    char temp_pass[50];
+    static char hashed_password[HASH_LENGTH];
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
     
-    FILE *fp = fopen(USERS, "r");
-    if (fp == NULL) {
-        printf("Error opening users file!\n");
+    if (sqlite3_open(DB_FILE, &db) != SQLITE_OK) {
         return "no user found";
     }
     
-    while (fscanf(fp, "%s %s", u.name, temp_pass) != EOF) {
-        if (strcmp(u.name, u.name) == 0) {
-            fclose(fp);
-            hashPassword(temp_pass, hashed_password);
+    const char *sql = "SELECT password FROM users WHERE username = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, u.username, -1, SQLITE_STATIC);
+        
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            const char *pwd = (const char*)sqlite3_column_text(stmt, 0);
+            strncpy(hashed_password, pwd, sizeof(hashed_password) - 1);
+            sqlite3_finalize(stmt);
+            sqlite3_close(db);
             return hashed_password;
         }
     }
     
-    fclose(fp);
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
     return "no user found";
 }
 
 void loginMenu(char name[50], char pass[50]) {
     struct termios oflags, nflags;
+    int c;
+
+    // Clear buffers
+    memset(name, 0, 50);
+    memset(pass, 0, 50);
+
+    // Clear input buffer before starting
+    while ((c = getchar()) != '\n' && c != EOF) { }
 
     system("clear");
     printf("\n\n\n\t\t\t\t   Bank Management System");
     printf("\n\t\t\t\t\t User Login: ");
-    scanf("%s", name);
-    clearInputBuffer();  // Clear any extra input
+    
+    if (scanf("%49s", name) != 1) {
+        printf("\n\t\t✖ Invalid input!\n");
+        return;
+    }
+    while ((c = getchar()) != '\n' && c != EOF) { }
 
     // Only disable echo for password input
-    tcgetattr(fileno(stdin), &oflags);
+    if (tcgetattr(STDIN_FILENO, &oflags) != 0) {
+        printf("\n\t\t✖ Terminal error!\n");
+        return;
+    }
     nflags = oflags;
     nflags.c_lflag &= ~ECHO;
     nflags.c_lflag |= ECHONL;
 
-    if (tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0) {
-        perror("tcsetattr");
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &nflags) != 0) {
+        printf("\n\t\t✖ Terminal error!\n");
         return;
     }
 
-    printf("\n\n\n\n\n\t\t\t\tEnter the password to login: ");
-    scanf("%s", pass);
-    clearInputBuffer();
+    printf("\n\n\n\n\n\t\t\t\tEnter the password: ");
+    if (scanf("%49s", pass) != 1) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &oflags);
+        printf("\n\t\t✖ Invalid input!\n");
+        return;
+    }
+    while ((c = getchar()) != '\n' && c != EOF) { }
 
     // Restore terminal settings
-    if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0) {
-        perror("tcsetattr");
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &oflags) != 0) {
+        printf("\n\t\t✖ Terminal error!\n");
+        return;
     }
 }
 
