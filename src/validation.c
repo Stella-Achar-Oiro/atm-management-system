@@ -73,7 +73,7 @@ int validateAccountNumber(int accountNum) {
 struct ValidationResult getAccountNumberInput(int* accountNum) {
     struct ValidationResult result = {0, NULL};
 
-    printf("\nEnter account number (5 digits): ");
+    printf("\nEnter account number (9 digits): ");  // Updated prompt
     if (scanf("%d", accountNum) != 1) {
         clearInputBuffer();
         printf("\n\t\t✖ Invalid format! Account number must be numeric.\n");
@@ -84,7 +84,8 @@ struct ValidationResult getAccountNumberInput(int* accountNum) {
     }
 
     if (validateAccountNumber(*accountNum) != VALID) {
-        printf("\n\t\t✖ Account number must be exactly 5 digits.\n");
+        printf("\n\t\t✖ Account number must be exactly 9 digits.\n");  // Updated message
+        printf("\n\t\tValid range: %d to %d\n", MIN_ACCOUNT_NUMBER, MAX_ACCOUNT_NUMBER);
         printf("\n\t\tPress any key to return to main menu...");
         clearInputBuffer();
         getchar();

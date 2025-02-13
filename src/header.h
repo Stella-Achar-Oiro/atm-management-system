@@ -19,8 +19,8 @@
 // Validation constants
 #define MAX_NAME_LENGTH 50
 #define MAX_PHONE_LENGTH 15
-#define MIN_ACCOUNT_NUMBER 10000
-#define MAX_ACCOUNT_NUMBER 99999
+#define MIN_ACCOUNT_NUMBER 100000000  // 9 digits
+#define MAX_ACCOUNT_NUMBER 999999999  // 9 digits
 #define MIN_AMOUNT 0.01
 #define MAX_AMOUNT 1000000.00
 #define MAX_RETRIES 3

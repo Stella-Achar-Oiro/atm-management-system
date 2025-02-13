@@ -82,39 +82,30 @@ int insertUser(const char* username, const char* hashed_password) {
     return (rc == SQLITE_DONE) ? 1 : -1;
 }
 
-int verifyUser(const char* username, const char* password) {
+int verifyUser(const char* username, const char* hashed_password) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
     int verified = 0;
     
-    // Open database
-    int rc = sqlite3_open(DB_FILE, &db);
-    if (rc != SQLITE_OK) {
+    if (sqlite3_open(DB_FILE, &db) != SQLITE_OK) {
         fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
         return 0;
     }
     
-    // Get stored hash for user
-    const char *sql = "SELECT password FROM users WHERE username = ?;";
-    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, 0);
-    
-    if (rc != SQLITE_OK) {
+    const char *sql = "SELECT password FROM users WHERE username = ? AND password = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) != SQLITE_OK) {
         fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return 0;
     }
     
-    // Bind the username parameter
     sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, hashed_password, -1, SQLITE_STATIC);
     
-    // Execute the query
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_ROW) {
-        const char* stored_hash = (const char*)sqlite3_column_text(stmt, 0);
-        verified = verifyPassword(password, stored_hash);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        verified = 1;  // User found with matching username and password
     }
     
-    // Clean up
     sqlite3_finalize(stmt);
     sqlite3_close(db);
     
@@ -181,8 +172,8 @@ int createAccount(struct Account* account) {
     
     // Now insert/update the account
     const char *sql = "INSERT OR REPLACE INTO accounts "
-                     "(user_id, account_number, account_type, balance, country, phone) "
-                     "VALUES (?, ?, ?, ?, ?, ?);";
+                     "(user_id, account_number, account_type, balance, country, phone, created_at) "
+                     "VALUES (?, ?, ?, ?, ?, ?, datetime('now'));";
                      
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) != SQLITE_OK) {
         fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db));

@@ -1,6 +1,12 @@
 #include "header.h"
 #include <time.h>
 
+void pauseExecution() {
+    printf("\nPress Enter to continue...");
+    clearInputBuffer();
+    getchar();
+}
+
 void createNewAcc(struct User u) {
     struct Account acc;
     int status;
@@ -12,7 +18,13 @@ void createNewAcc(struct User u) {
     // Initialize account with user information
     acc.user_id = u.id;
     acc.account_number = getNextAccountId();
-    acc.balance = 0.0;
+
+    // Display the assigned account number prominently
+    printf("\n\t\t╔════════════════════════════════════════╗");
+    printf("\n\t\t║   Your Account Number: %d", acc.account_number);
+    printf("\n\t\t║   PLEASE SAVE THIS NUMBER!             ║");
+    printf("\n\t\t╚════════════════════════════════════════╝\n");
+    printf("\n\t\tYou will need this number for all future transactions.\n\n");
 
     // Get account type
     do {
@@ -99,9 +111,18 @@ void createNewAcc(struct User u) {
     // Save account to database
     if (createAccount(&acc)) {
         printf("\n\t\t✔ Account created successfully!\n");
-        printf("\n\t\tYour account number is: %d\n", acc.account_number);
+        printf("\n\t\t╔════════════════════════════════════════╗");
+        printf("\n\t\t║   IMPORTANT: SAVE YOUR ACCOUNT INFO    ║");
+        printf("\n\t\t║   Account Number: %d", acc.account_number);
+        printf("\n\t\t║   Type: %s", acc.account_type);
+        printf("\n\t\t║   Initial Balance: $%.2f", acc.balance);
+        printf("\n\t\t║   Created: %s", acc.created_at);
+        printf("\n\t\t╚════════════════════════════════════════╝\n");
+        
+        pauseExecution();
     } else {
         printf("\n\t\t✖ Failed to create account!\n");
+        pauseExecution();
     }
     
     printf("\nPress any key to continue...");

@@ -14,13 +14,19 @@ OBJECTS = $(SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Output binary
 TARGET = atm
+MIGRATION = migration
 
 # Default target
-all: setup $(TARGET)
+all: setup $(TARGET) $(MIGRATION)
 
-# Linking the program
-$(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
+# Linking the main program
+$(TARGET): $(filter-out $(BUILD_DIR)/migration.o, $(OBJECTS))
+	$(CC) $^ -o $@ $(LDFLAGS)
+
+# Linking the migration utility
+$(MIGRATION): $(BUILD_DIR)/migration.o $(BUILD_DIR)/database.o $(BUILD_DIR)/encryption.o
+	$(CC) $^ -o $@ $(LDFLAGS)
+
 
 # Compiling source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(SRC_DIR)/header.h
@@ -39,7 +45,7 @@ install-deps:
 
 # Clean build files
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET)
+	rm -rf $(BUILD_DIR) $(TARGET) $(MIGRATION)
 
 # Clean all generated files including database
 cleanall: clean

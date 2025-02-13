@@ -1,6 +1,7 @@
 # Compiled files
 *.o
 atm
+migration
 build/
 
 # Database files

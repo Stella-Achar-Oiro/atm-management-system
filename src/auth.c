@@ -175,13 +175,12 @@ const char *getPassword(struct User u) {
 void loginMenu(char name[50], char pass[50]) {
     struct termios oflags, nflags;
     int c;
+    char hashed_password[HASH_LENGTH];  // Add this line
 
     // Clear buffers
     memset(name, 0, 50);
     memset(pass, 0, 50);
-
-    // Clear input buffer before starting
-    while ((c = getchar()) != '\n' && c != EOF) { }
+    memset(hashed_password, 0, HASH_LENGTH);  // Add this line
 
     system("clear");
     printf("\n\n\n\t\t\t\t   Bank Management System");
@@ -193,7 +192,8 @@ void loginMenu(char name[50], char pass[50]) {
     }
     while ((c = getchar()) != '\n' && c != EOF) { }
 
-    // Only disable echo for password input
+    // Password input with hidden characters
+    printf("\n\n\n\n\n\t\t\t\tEnter the password: ");
     if (tcgetattr(STDIN_FILENO, &oflags) != 0) {
         printf("\n\t\t✖ Terminal error!\n");
         return;
@@ -207,18 +207,16 @@ void loginMenu(char name[50], char pass[50]) {
         return;
     }
 
-    printf("\n\n\n\n\n\t\t\t\tEnter the password: ");
     if (scanf("%49s", pass) != 1) {
         tcsetattr(STDIN_FILENO, TCSANOW, &oflags);
         printf("\n\t\t✖ Invalid input!\n");
         return;
     }
-    while ((c = getchar()) != '\n' && c != EOF) { }
 
-    // Restore terminal settings
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &oflags) != 0) {
-        printf("\n\t\t✖ Terminal error!\n");
-        return;
-    }
+    // Hash the password before verification
+    hashPassword(pass, hashed_password);  // Add this line
+    strncpy(pass, hashed_password, 49);   // Add this line
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oflags);
 }
 
