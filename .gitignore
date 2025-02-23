@@ -1,20 +1,73 @@
-# Compiled files
+# Build artifacts
 *.o
-atm
-migration
+*.out
+*.exe
+bin/
+obj/
 build/
+dist/
+
+# Binary
+atm
+*/atm
 
 # Database files
-data/*.db
-data/*.txt
+*.db
+*.db-journal
+data/
+*.sqlite
+*.sqlite3
 
-# Temporary files
-*~
+# IDE and editor files
+.vscode/
+.idea/
 *.swp
+*.swo
+*~
 .DS_Store
+Thumbs.db
 
-# Build directory
-build/
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Generated files
+*.log
+*.tmp
+temp/
+logs/
+
 # Backup files
 *.bak
-data/*.bak
+*.backup
+*_backup
+*.old
+
+# Dependencies
+lib/
+vendor/
+
+# Configuration files that might contain sensitive data
+config.local.h
+*.env
+.env*
+
+# Test files
+test/temp/
+test/data/
+test-results/
+
+# System specific files
+.directory
+.Trash-*
+$RECYCLE.BIN/
+ehthumbs.db
+Desktop.ini
+
+# Project specific
+data/*.db
+data/backups/
+migration/
+*.core
