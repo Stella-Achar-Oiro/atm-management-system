@@ -1,719 +1,562 @@
 #include "header.h"
-#include <time.h>
 
-void pauseExecution() {
-    printf("\nPress Enter to continue...");
-    clearInputBuffer();
-    getchar();
-}
+// ============= Core System Functions =============
 
-void createNewAcc(struct User u) {
-    struct Account acc;
-    int status;
-    char phone[MAX_PHONE_LENGTH];
-    
+void die() {
     system("clear");
-    printf("\n\t\t====== New Account Registration ======\n");
-
-    // Initialize account with user information
-    acc.user_id = u.id;
-    acc.account_number = getNextAccountId();
-
-    // Display the assigned account number prominently
-    printf("\n\t\t╔════════════════════════════════════════╗");
-    printf("\n\t\t║   Your Account Number: %d", acc.account_number);
-    printf("\n\t\t║   PLEASE SAVE THIS NUMBER!             ║");
-    printf("\n\t\t╚════════════════════════════════════════╝\n");
-    printf("\n\t\tYou will need this number for all future transactions.\n\n");
-
-    // Get account type
-    do {
-        printf("\nSelect account type:\n");
-        printf("1. Saving\n");
-        printf("2. Current\n");
-        printf("3. Fixed01 (1 year)\n");
-        printf("4. Fixed02 (2 years)\n");
-        printf("5. Fixed03 (3 years)\n");
-        printf("Enter choice (1-5): ");
-        
-        int choice;
-        if (scanf("%d", &choice) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid choice! Please enter a number.\n");
-            continue;
-        }
-        clearInputBuffer();
-        
-        switch(choice) {
-            case 1:
-                strncpy(acc.account_type, "saving", sizeof(acc.account_type) - 1);
-                break;
-            case 2:
-                strncpy(acc.account_type, "current", sizeof(acc.account_type) - 1);
-                break;
-            case 3:
-                strncpy(acc.account_type, "fixed01", sizeof(acc.account_type) - 1);
-                break;
-            case 4:
-                strncpy(acc.account_type, "fixed02", sizeof(acc.account_type) - 1);
-                break;
-            case 5:
-                strncpy(acc.account_type, "fixed03", sizeof(acc.account_type) - 1);
-                break;
-            default:
-                printf("\n\t\t✖ Invalid choice!\n");
-                continue;
-        }
-        break;
-    } while (1);
-
-    // Get country
-    do {
-        printf("\nEnter country: ");
-        scanf("%s", acc.country);
-        clearInputBuffer();
-        status = validateCountry(acc.country);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid country name!\n");
-        }
-    } while (status != VALID);
-
-    // Get phone number
-    do {
-        printf("\nEnter phone number: ");
-        scanf("%s", phone);
-        clearInputBuffer();
-        status = validatePhone(phone);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid phone number!\n");
-            continue;
-        }
-        strncpy(acc.phone, phone, sizeof(acc.phone) - 1);
-        break;
-    } while (1);
-
-    // Get initial deposit amount
-    do {
-        printf("\nEnter initial deposit amount: $");
-        if (scanf("%lf", &acc.balance) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid amount format!\n");
-            continue;
-        }
-        status = validateAmount(acc.balance);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid amount!\n");
-            continue;
-        }
-        break;
-    } while (1);
-
-    // Save account to database
-    if (createAccount(&acc)) {
-        printf("\n\t\t✔ Account created successfully!\n");
-        printf("\n\t\t╔════════════════════════════════════════╗");
-        printf("\n\t\t║   IMPORTANT: SAVE YOUR ACCOUNT INFO    ║");
-        printf("\n\t\t║   Account Number: %d", acc.account_number);
-        printf("\n\t\t║   Type: %s", acc.account_type);
-        printf("\n\t\t║   Initial Balance: $%.2f", acc.balance);
-        printf("\n\t\t║   Created: %s", acc.created_at);
-        printf("\n\t\t╚════════════════════════════════════════╝\n");
-        
-        pauseExecution();
-    } else {
-        printf("\n\t\t✖ Failed to create account!\n");
-        pauseExecution();
-    }
-    
-    printf("\nPress any key to continue...");
+    printf("\n\n\n\n\n\t\tAn unrecoverable error occurred. Please try again later...\n");
     getchar();
+    exit(1);
 }
 
-void checkAllAccounts(struct User u) {
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
-    int found = 0;
-    
-    if (sqlite3_open(DB_FILE, &db) != SQLITE_OK) {
-        printf("\n\t\t✖ Database error\n");
-        return;
-    }
-    
-    const char *sql = "SELECT account_number, account_type, balance, country, phone "
-                     "FROM accounts WHERE user_id = ?;";
-                     
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) != SQLITE_OK) {
-        printf("\n\t\t✖ Database error\n");
-        sqlite3_close(db);
-        return;
-    }
-    
-    sqlite3_bind_int(stmt, 1, u.id);
-    
-    system("clear");
-    printf("\n\t\t====== All Accounts ======\n\n");
-    
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        found = 1;
-        printf("\t\tAccount Number: %d\n", sqlite3_column_int(stmt, 0));
-        printf("\t\tType: %s\n", sqlite3_column_text(stmt, 1));
-        printf("\t\tBalance: $%.2f\n", sqlite3_column_double(stmt, 2));
-        printf("\t\tCountry: %s\n", sqlite3_column_text(stmt, 3));
-        printf("\t\tPhone: %s\n", sqlite3_column_text(stmt, 4));
-        printf("\t\t------------------------\n");
-    }
-    
-    if (!found) {
-        printf("\t\tNo accounts found.\n");
-    }
-    
-    sqlite3_finalize(stmt);
-    sqlite3_close(db);
-    
-    printf("\n\t\tPress Enter to continue...");
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF) { }
-    getchar();
-}
-
-void stayOrReturn(int notGood, void f(struct User u), struct User u)
-{
+void success(User u) {
     int option;
-    if (notGood == 0)
-    {
+    printf("\n\n\t\t✔ Success!\n\n");
+    do {
+        printf("\n\n\t\tEnter\n\t\t1) to go to the main menu\n\t\t2) to exit\n\n\t\t");
+        option = input_number();
         system("clear");
-        printf("\n✖ Record not found!!\n");
-    invalid:
-        printf("\nEnter 0 to try again, 1 to return to main menu and 2 to exit:");
-        scanf("%d", &option);
-        if (option == 0)
-            f(u);
-        else if (option == 1)
-            mainMenu(u);
-        else if (option == 2)
-            exit(0);
-        else
-        {
-            printf("Insert a valid operation!\n");
-            goto invalid;
+        switch (option) {
+            case 1: mainMenu(u); break;
+            case 2: exit(1);
+            default: printf("\n\n\t\tInsert a valid operation!\n"); break;
         }
-    }
-    else
-    {
-        printf("\nEnter 1 to go to the main menu and 0 to exit:");
-        scanf("%d", &option);
-    }
-    if (option == 1)
-    {
-        system("clear");
-        mainMenu(u);
-    }
-    else
-    {
-        system("clear");
-        exit(1);
-    }
+    } while (option != 1 && option != 2);
 }
 
-void success(struct User u)
-{
+void Return(User u) {
     int option;
-    printf("\n✔ Success!\n\n");
-invalid:
-    printf("Enter 1 to go to the main menu and 0 to exit!\n");
-    scanf("%d", &option);
-    system("clear");
-    if (option == 1)
-    {
-        mainMenu(u);
-    }
-    else if (option == 0)
-    {
-        exit(1);
-    }
-    else
-    {
-        printf("\n✖ Insert a valid operation!\n");
-        goto invalid;
-    }
-}
-
-// Calculate interest based on account type
-double calculateInterest(const char* accountType, double amount) {
-    if (strcmp(accountType, "saving") == 0) {
-        return amount * 0.07;  // 7% for savings
-    } else if (strcmp(accountType, "fixed01") == 0) {
-        return amount * 0.04;  // 4% for 1 year fixed
-    } else if (strcmp(accountType, "fixed02") == 0) {
-        return amount * 0.05;  // 5% for 2 year fixed
-    } else if (strcmp(accountType, "fixed03") == 0) {
-        return amount * 0.08;  // 8% for 3 year fixed
-    }
-    return 0.0;  // No interest for current account
-}
-
-// Function to check if account type allows transactions
-int canMakeTransaction(const char* accountType) {
-    return (strcmp(accountType, "fixed01") != 0 && 
-            strcmp(accountType, "fixed02") != 0 && 
-            strcmp(accountType, "fixed03") != 0);
-}
-
-void updateAccount(struct User u) {
-    struct Account acc;
-    int accountNum;
-    char phone[MAX_PHONE_LENGTH];
-    char country[100];
-    int choice;
-    int status;
-    
-    system("clear");
-    printf("\n\t\t====== Update Account ======\n");
-
-    // Account number validation
     do {
-        printf("\nEnter account number you want to update: ");
-        if (scanf("%d", &accountNum) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid account number format!\n");
-            continue;
+        printf("\n\n\tEnter\n\t1) to go to the main menu\n\t2) to exit\n\n\t\t");
+        option = input_number();
+        switch (option) {
+            case 1: system("clear"); mainMenu(u); break;
+            case 2: system("clear"); exit(1);
+            default: printf("\n\t[ERROR] Insert a valid operation!\n");
         }
-        status = validateAccountNumber(accountNum);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid account number! Must be 5 digits.\n");
+    } while (option != 1 && option != 2);
+}
+
+void StayOrReturn(int notGood, void (*f)(User), User u) {
+    int option;
+    while (1) {
+        if (notGood == 0) {
+            printf("\n\n\t\tEnter\n\t\t0) to try again, \n\t\t1) to return to main menu and \n\t\t2) to exit\n\n\t\t");
+            option = input_number();
+            if (option == 0) {
+                f(u);
+                break;
+            } else if (option == 1) {
+                mainMenu(u);
+                break;
+            } else if (option == 2) {
+                system("clear");
+                exit(0);
+            } else {
+                printf("\n\n\t\tPlease insert a valid operation!\n");
+            }
         } else {
-            break;
-        }
-    } while (1);
-
-    // Get account from database
-    if (!getAccount(accountNum, &acc) || acc.user_id != u.id) {
-        printf("\n\t\t✖ Account not found or unauthorized access!\n");
-        return;
-    }
-
-    printf("\n\t\t✔ Account found! Current details:");
-    printf("\n\t\tCountry: %s", acc.country);
-    printf("\n\t\tPhone: %s", acc.phone);
-    
-    do {
-        printf("\n\nWhat would you like to update?");
-        printf("\n1. Country");
-        printf("\n2. Phone Number");
-        printf("\n3. Cancel Update");
-        printf("\nEnter choice (1-3): ");
-        
-        if (scanf("%d", &choice) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid choice! Please enter a number.\n");
-            continue;
-        }
-        clearInputBuffer();
-
-        switch(choice) {
-            case 1:
-                do {
-                    printf("\nEnter new country: ");
-                    scanf("%s", country);
-                    clearInputBuffer();
-                    status = validateCountry(country);
-                    if (status != VALID) {
-                        printf("\n\t\t✖ Invalid country name!\n");
-                    }
-                } while (status != VALID);
-                strncpy(acc.country, country, sizeof(acc.country) - 1);
+            printf("\n\n\t\tEnter\n\t\t1) to go to the main menu\n\t\t0) to exit\n\n\t\t");
+            option = input_number();
+            if (option == 1) {
+                system("clear");
+                mainMenu(u);
                 break;
-
-            case 2:
-                do {
-                    printf("\nEnter new phone number: ");
-                    scanf("%s", phone);
-                    clearInputBuffer();
-                    status = validatePhone(phone);
-                    if (status != VALID) {
-                        printf("\n\t\t✖ Invalid phone number!\n");
-                        continue;
-                    }
-                    strncpy(acc.phone, phone, sizeof(acc.phone) - 1);
-                    break;
-                } while (1);
-                break;
-
-            case 3:
-                printf("\n\t\t✖ Update cancelled.\n");
-                return;
-
-            default:
-                printf("\n\t\t✖ Invalid choice! Please enter 1, 2, or 3.\n");
-                continue;
-        }
-        break;
-    } while (1);
-    
-    // Update account in database
-    if (createAccount(&acc)) {  // This will update existing account
-        printf("\n\t\t✔ Account updated successfully!\n");
-    } else {
-        printf("\n\t\t✖ Failed to update account!\n");
-    }
-    
-    printf("\nPress any key to continue...");
-    getchar();
-}
-
-void makeTransaction(struct User u) {
-    struct Account acc;
-    int accountNum, choice;
-    double amount;
-    int status;
-    
-    system("clear");
-    printf("\n\t\t====== Make Transaction ======\n");
-
-    // Account number validation
-    do {
-        printf("\nEnter account number for transaction: ");
-        if (scanf("%d", &accountNum) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid account number format!\n");
-            continue;
-        }
-        status = validateAccountNumber(accountNum);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid account number!\n");
-        } else {
-            break;
-        }
-    } while (1);
-
-    // Get account from database
-    if (!getAccount(accountNum, &acc) || acc.user_id != u.id) {
-        printf("\n\t\t✖ Account not found or unauthorized access!\n");
-        return;
-    }
-
-    // Check if account type allows transactions
-    if (!canMakeTransaction(acc.account_type)) {
-        printf("\n\t\t✖ Transactions not allowed for %s account type!\n", acc.account_type);
-        return;
-    }
-
-    printf("\n\t\tCurrent balance: $%.2f", acc.balance);
-    
-    do {
-        printf("\n1. Deposit");
-        printf("\n2. Withdraw");
-        printf("\n3. Cancel Transaction");
-        printf("\nEnter choice (1-3): ");
-        
-        if (scanf("%d", &choice) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid choice!\n");
-            continue;
-        }
-        clearInputBuffer();
-
-        if (choice < 1 || choice > 3) {
-            printf("\n\t\t✖ Invalid choice!\n");
-            continue;
-        }
-        break;
-    } while (1);
-
-    switch(choice) {
-        case 1:  // Deposit
-            do {
-                printf("\nEnter amount to deposit: $");
-                if (scanf("%lf", &amount) != 1) {
-                    clearInputBuffer();
-                    printf("\n\t\t✖ Invalid amount format!\n");
-                    continue;
-                }
-                status = validateAmount(amount);
-                if (status != VALID) {
-                    printf("\n\t\t✖ Invalid amount!\n");
-                    continue;
-                }
-                acc.balance += amount;
-                if (updateBalance(accountNum, acc.balance)) {
-                    printf("\n\t\t✔ Deposit successful! New balance: $%.2f\n", acc.balance);
-                } else {
-                    printf("\n\t\t✖ Failed to process deposit!\n");
-                }
-                break;
-            } while (1);
-            break;
-
-        case 2:  // Withdraw
-            do {
-                printf("\nEnter amount to withdraw: $");
-                if (scanf("%lf", &amount) != 1) {
-                    clearInputBuffer();
-                    printf("\n\t\t✖ Invalid amount format!\n");
-                    continue;
-                }
-                status = validateAmount(amount);
-                if (status != VALID) {
-                    printf("\n\t\t✖ Invalid amount!\n");
-                    continue;
-                }
-                if (amount > acc.balance) {
-                    printf("\n\t\t✖ Insufficient funds!\n");
-                    continue;
-                }
-                acc.balance -= amount;
-                if (updateBalance(accountNum, acc.balance)) {
-                    printf("\n\t\t✔ Withdrawal successful! New balance: $%.2f\n", acc.balance);
-                } else {
-                    printf("\n\t\t✖ Failed to process withdrawal!\n");
-                }
-                break;
-            } while (1);
-            break;
-
-        case 3:  // Cancel
-            printf("\n\t\t✖ Transaction cancelled.\n");
-            break;
-    }
-
-    printf("\nPress any key to continue...");
-    getchar();
-}
-
-void checkAccountDetails(struct User u) {
-    struct Account acc;
-    int accountNum;
-    int status;
-    
-    system("clear");
-    printf("\n\t\t====== Account Details ======\n");
-
-    // Account number validation
-    do {
-        printf("\nEnter the account number: ");
-        if (scanf("%d", &accountNum) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid account number format!\n");
-            continue;
-        }
-        status = validateAccountNumber(accountNum);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid account number!\n");
-        } else {
-            break;
-        }
-    } while (1);
-
-    // Get account from database
-    if (!getAccount(accountNum, &acc) || acc.user_id != u.id) {
-        printf("\n\t\t✖ Account not found or unauthorized access!\n");
-        return;
-    }
-
-    printf("\n\t\t===== Account Information =====");
-    printf("\n\t\tAccount Number: %d", acc.account_number);
-    printf("\n\t\tAccount Type: %s", acc.account_type);
-    printf("\n\t\tBalance: $%.2f", acc.balance);
-    printf("\n\t\tCountry: %s", acc.country);
-    printf("\n\t\tPhone: %s", acc.phone);
-    printf("\n\t\tCreated: %s", acc.created_at);
-    
-    // Calculate and display interest information
-    if (strcmp(acc.account_type, "current") == 0) {
-        printf("\n\n\t\tYou will not get interests because the account is of type current");
-    } else {
-        double interest = calculateInterest(acc.account_type, acc.balance);
-        printf("\n\n\t\tYou will get $%.2f as interest on the first of every month", interest);
-    }
-    
-    printf("\n\nPress any key to continue...");
-    getchar();
-    getchar();
-}
-
-void removeExistingAccount(struct User u) {
-    struct Account acc;
-    int accountNum;
-    char confirmation;
-    int status;
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
-    
-    system("clear");
-    printf("\n\t\t====== Remove Account ======\n");
-
-    // Account number validation
-    do {
-        printf("\nEnter the account number to remove: ");
-        if (scanf("%d", &accountNum) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid account number format!\n");
-            continue;
-        }
-        status = validateAccountNumber(accountNum);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid account number!\n");
-        } else {
-            break;
-        }
-    } while (1);
-
-    // Get account from database
-    if (!getAccount(accountNum, &acc) || acc.user_id != u.id) {
-        printf("\n\t\t✖ Account not found or unauthorized access!\n");
-        return;
-    }
-
-    printf("\n\t\tAccount found with the following details:");
-    printf("\n\t\tAccount Number: %d", acc.account_number);
-    printf("\n\t\tBalance: $%.2f", acc.balance);
-    printf("\n\t\tAccount Type: %s", acc.account_type);
-    
-    do {
-        printf("\n\nAre you sure you want to remove this account? (y/n): ");
-        scanf(" %c", &confirmation);
-        clearInputBuffer();
-        
-        if (confirmation != 'y' && confirmation != 'Y' && 
-            confirmation != 'n' && confirmation != 'N') {
-            printf("\n\t\t✖ Invalid input! Please enter 'y' or 'n'.\n");
-            continue;
-        }
-        break;
-    } while (1);
-    
-    if (confirmation == 'y' || confirmation == 'Y') {
-        if (acc.balance > 0) {
-            printf("\n\t\t⚠ Warning: Account has remaining balance of $%.2f", acc.balance);
-            do {
-                printf("\nAre you absolutely sure? (y/n): ");
-                scanf(" %c", &confirmation);
-                clearInputBuffer();
-                
-                if (confirmation != 'y' && confirmation != 'Y' && 
-                    confirmation != 'n' && confirmation != 'N') {
-                    printf("\n\t\t✖ Invalid input!\n");
-                    continue;
-                }
-                break;
-            } while (1);
-        }
-        
-        if (confirmation == 'y' || confirmation == 'Y') {
-            // Delete account from database
-            if (sqlite3_open(DB_FILE, &db) == SQLITE_OK) {
-                const char *sql = "DELETE FROM accounts WHERE account_number = ? AND user_id = ?;";
-                if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
-                    sqlite3_bind_int(stmt, 1, accountNum);
-                    sqlite3_bind_int(stmt, 2, u.id);
-                    
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        printf("\n\t\t✔ Account successfully removed!\n");
-                    } else {
-                        printf("\n\t\t✖ Failed to remove account!\n");
-                    }
-                }
-                sqlite3_finalize(stmt);
-                sqlite3_close(db);
+            } else if (option == 0) {
+                system("clear");
+                exit(1);
+            } else {
+                printf("\n\n\t\tPlease insert a valid operation!\n");
             }
         }
-    } else {
-        printf("\n\t\t✖ Account removal cancelled.\n");
     }
-    
-    printf("\nPress any key to continue...");
-    getchar();
 }
 
-void transferOwnership(struct User u) {
-    struct Account acc;
-    struct User newOwner;
-    int accountNum;
-    char newUsername[MAX_NAME_LENGTH];
-    char confirmation;
-    int status;
+// ============= Utility Functions =============
+
+bool isdate(Date date) {
+    if (date.month < 1 || date.month > 12) return false;
+    if (date.day < 1) return false;
     
+    time_t tm = time(NULL);
+    struct tm *tm_info = localtime(&tm);
+    int currentYear = tm_info->tm_year + 1900;
+    
+    if (date.year < 1472 || date.year > currentYear) return false;
+
+    int daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    if (date.month == 2 && isleapyear(date.year)) {
+        daysInMonth[1] = 29;
+    }
+    if (date.day > daysInMonth[date.month - 1]) return false;
+
+    return true;
+}
+
+void trimlinechar(char *str) {
+    size_t len = strlen(str);
+    if (len > 0 && str[len - 1] == '\n') {
+        str[len - 1] = '\0';
+    }
+}
+
+bool ispositive(const char *str) {
+    bool hasdot = false;
+    const char *str_p = str;
+
+    if (str == NULL || *str == '\0' || *str_p == '-') return false;
+
+    while (*str_p != '\0') {
+        if (*str_p == '.') {
+            if (hasdot) return false;
+            hasdot = true;
+        } else if (!isdigit(*str_p)) {
+            return false;
+        }
+        str_p++;
+    }
+    return true;
+}
+
+bool isvaliddouble(const char *str, double *dnum) {
+    char *end;
+    errno = 0;
+
+    if (!ispositive(str)) return false;
+
+    *dnum = strtod(str, &end);
+    if (end == str || *end != '\0' || errno == ERANGE) return false;
+
+    return true;
+}
+
+bool isalphabet(char *str) {
+    size_t len = strlen(str);
+    for (size_t i = 0; i < len; i++) {
+        if (!isalpha((unsigned char)str[i]) && str[i] != ' ') {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool isleapyear(int year) {
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+}
+
+bool isstring(const char *str, size_t n) {
+    if (str == NULL || strlen(str) == 0) return false;
+    if (strlen(str) >= n) return false;
+    return true;
+}
+
+double interest(double amount, char *AccountType) {
+    double interestRate = 0.0;  // Initialize with default value
+    
+    if (AccountType == NULL) {
+        return 0.0;  // Return 0 interest for invalid account type
+    }
+
+    if (strcmp(AccountType, "saving") == 0) {
+        interestRate = 0.07;        // 7% for savings
+    } else if (strcmp(AccountType, "fixed01") == 0) {
+        interestRate = 0.04;        // 4% for 1-year fixed
+    } else if (strcmp(AccountType, "fixed02") == 0) {
+        interestRate = 0.05;        // 5% for 2-year fixed
+    } else if (strcmp(AccountType, "fixed03") == 0) {
+        interestRate = 0.08;        // 8% for 3-year fixed
+    } else if (strcmp(AccountType, "current") == 0) {
+        interestRate = 0.0;         // No interest for current accounts
+    }
+
+    return amount * interestRate;
+}
+
+// ============= Account Operations =============
+
+void accountCreate(User u) {
+    Record r;
+    char input[MAXINPUTLEN];
+
     system("clear");
-    printf("\n\t\t====== Transfer Account Ownership ======\n");
+    printf("\t\t\t========= New record ========\n");
 
-    // Account number validation
-    do {
-        printf("\nEnter the account number to transfer: ");
-        if (scanf("%d", &accountNum) != 1) {
-            clearInputBuffer();
-            printf("\n\t\t✖ Invalid account number format!\n");
-            continue;
-        }
-        status = validateAccountNumber(accountNum);
-        if (status != VALID) {
-            printf("\n\t\t✖ Invalid account number!\n");
-        } else {
-            break;
-        }
-    } while (1);
-
-    // Get account from database
-    if (!getAccount(accountNum, &acc) || acc.user_id != u.id) {
-        printf("\n\t\t✖ Account not found or unauthorized access!\n");
+    printf("\n\tEnter the account number");
+    r.accountNbr = input_number();
+    if(dbAccountExistsInDatabase(r.accountNbr)) {
+        printf("\n\t\t✖ The Account Number You Entered already exists\n\n");
+        StayOrReturn(0, accountCreate, u);
         return;
     }
 
-    // Get and validate new owner's username
-    do {
-        printf("\nEnter the username of the new owner: ");
-        scanf("%s", newUsername);
-        clearInputBuffer();
-        
-        if (strlen(newUsername) < 3 || strlen(newUsername) > MAX_NAME_LENGTH) {
-            printf("\n\t\t✖ Invalid username length!\n");
-            continue;
-        }
-        
-        if (!getUser(newUsername, &newOwner)) {
-            printf("\n\t\t✖ User '%s' does not exist!\n", newUsername);
-            continue;
-        }
-        
-        if (strcmp(u.username, newUsername) == 0) {
-            printf("\n\t\t✖ Cannot transfer to yourself!\n");
-            continue;
-        }
-        
-        break;
-    } while (1);
+    r.userId = dbRetrieveUserId(u.name);
+    if (dbAccountExistsForUser(r.userId, r.accountNbr)) {
+        printf("\n\t\t✖ The Account Number You Entered already exists\n\n");
+        StayOrReturn(0, accountCreate, u);
+        return;
+    }
 
-    printf("\n\t\tAccount details:");
-    printf("\n\t\tAccount Number: %d", acc.account_number);
-    printf("\n\t\tBalance: $%.2f", acc.balance);
-    printf("\n\t\tAccount Type: %s", acc.account_type);
-    
-    do {
-        printf("\n\nConfirm transfer to %s? (y/n): ", newUsername);
-        scanf(" %c", &confirmation);
-        clearInputBuffer();
-        
-        if (confirmation != 'y' && confirmation != 'Y' && 
-            confirmation != 'n' && confirmation != 'N') {
-            printf("\n\t\t✖ Invalid input!\n");
-            continue;
-        }
-        break;
-    } while (1);
-    
-    if (confirmation == 'y' || confirmation == 'Y') {
-        // Update account ownership
-        acc.user_id = newOwner.id;
-        if (createAccount(&acc)) {  // This will update the existing account
-            sendTransferNotification(u.username, newUsername, acc.account_number,
-                                  acc.balance, acc.account_type);
-            printf("\n\t\t✔ Account successfully transferred to %s!\n", newUsername);
-        } else {
-            printf("\n\t\t✖ Failed to transfer account!\n");
+    printf("\nEnter today's date (mm/dd/yyyy): ");
+    if (scanf("%d/%d/%d", &r.deposit.month, &r.deposit.day, &r.deposit.year) != 3 || !isdate(r.deposit)) {
+        printf("\n\t\tInvalid date format or invalid date. Please try again.\n\n");
+        StayOrReturn(0, accountCreate, u);
+        return;
+    }
+    while (getchar() != '\n');
+
+    printf("\nEnter the phone number");
+    r.phone = input_number();
+
+    printf("\nEnter the country");
+    input_string(u, r.country);
+    if (!isalphabet(r.country)) {
+        printf("\n\tInvalid input. Please enter a valid country name.\n\n");
+        StayOrReturn(0, accountCreate, u);
+        return;
+    }
+
+    printf("\nEnter amount to deposit $");
+    if (fgets(input, sizeof(input), stdin) != NULL) {
+        input[strcspn(input, "\n")] = '\0';
+        if (!isvaliddouble(input, &r.amount)) {
+            printf("\n\t\tInvalid input. Please enter a valid amount.\n\n");
+            StayOrReturn(0, accountCreate, u);
+            return;
         }
     } else {
-        printf("\n\t\t✖ Transfer cancelled.\n");
+        die();
     }
+
+    printf("\nChoose the type of account:\n\t-> saving\n\t-> current\n\t-> fixed01(for 1 year)\n\t-> fixed02(for 2 years)\n\t-> fixed03(for 3 years)\n\n\tEnter your choice");
+    input_string(u, r.accountType);
+    bool valid = (strcmp(r.accountType, "fixed01") == 0 || 
+                 strcmp(r.accountType, "fixed02") == 0 || 
+                 strcmp(r.accountType, "fixed03") == 0 || 
+                 strcmp(r.accountType, "current") == 0 || 
+                 strcmp(r.accountType, "saving") == 0);
+    if (!valid) {
+        printf("\n\t\tInvalid Account Type!!!\n");
+        StayOrReturn(0, accountCreate, u);
+        return;
+    }
+
+    r.Accnt_Balance = r.amount;
+
+    if (!dbAccountCreate(u, r)) {
+        printf("\n\t\tAn error occurred while trying to create a new account\n");
+        StayOrReturn(0, accountCreate, u);
+        return;
+    }
+
+    system("clear");
+    printf("\n\n\t\t\tAccount Created Successfully!!!\n");
+    success(u);
+}
+
+void accountDetails(User u) {
+    int Accntid;
+    Record r;
+    double balance;
+
+    system("clear");
+    printf("\t\t====== Welcome %s =====\n\n", u.name);
+    printf("\n\t\tEnter The Account Number you want to check");
+    Accntid = input_number();
+
+    if (!dbFetchAccountDetails(u, Accntid, &r, &balance)) {
+        StayOrReturn(0, accountDetails, u);
+        return;
+    }
+
+    printf("\n\n\t\t==================================\n\n");
+    printf("\n\t\t====== [ Account details ] ========\n\n");
+    printf("\n\t\tID:      %d\n", r.id);
+    printf("\n\t\tNumber:  %d\n", r.accountNbr);
+    printf("\n\t\tType:    %s\n", r.accountType);
+    printf("\n\t\tAmount:  $%.2f\n", r.amount);
+    printf("\n\t\tBalance: $%.2f\n", balance);
+    printf("\n\t\tCountry: %s\n", r.country);
+    printf("\n\t\tPhone:   %d\n", r.phone);
+
+    if (strncmp(r.accountType, "current", 7) == 0) {
+        printf("\n\t\tYou will not get interests because the account is of type current\n\n");
+        StayOrReturn(1, accountDetails, u);
+        return;
+    }
+
+    double interestRate = interest(balance, r.accountType);
+    if (strncmp(r.accountType, "fixed01", 7) == 0) {
+        printf("\n\t\tYou will get $%.2f as interest on day %d/%d/%d.\n\n",
+               interestRate, r.deposit.month, r.deposit.day, r.deposit.year + 1);
+    } else if (strncmp(r.accountType, "fixed02", 7) == 0) {
+        printf("\n\t\tYou will get $%.2f as interest on day %d/%d/%d.\n\n",
+               interestRate * 2, r.deposit.month, r.deposit.day, r.deposit.year + 2);
+    } else if (strncmp(r.accountType, "fixed03", 7) == 0) {
+        printf("\n\t\tYou will get $%.2f as interest on day %d/%d/%d.\n\n",
+               interestRate * 3, r.deposit.month, r.deposit.day, r.deposit.year + 3);
+    } else if (strncmp(r.accountType, "saving", 6) == 0) {
+        printf("\n\t\tYou will get $%.2f as interest on day 10 of every month.\n\n",
+               interestRate / 12);
+    }
+
+    printf("\n\t\t==================================\n");
+    StayOrReturn(1, accountDetails, u);
+}
+
+void accountUpdateInfo(User u) {
+    Record r;
+    int option;
+
+    system("clear");
+Reselect:
+    printf("\n\t\tEnter Account Number");
+    r.accountNbr = input_number();
+
+    r.userId = dbRetrieveUserId(u.name);
+    if (!dbAccountExistsForUser(r.userId, r.accountNbr)) {
+        printf("\n\t\t✖ The Account Number You Entered does not exist\n\n");
+        Return(u);
+        return;
+    }
+
+    printf("\n\t\tWhich Field You would like to Update\n\n\t\t\t[1] - Phone\n\n\t\t\t[2] - Country\n");
+    option = input_number();
+
+    switch (option) {
+        case 1:
+            printf("\t\tEnter your new phone number");
+            r.phone = input_number();
+            break;
+        case 2:
+            printf("\t\tEnter your new country");
+            input_string(u, r.country);
+            if (!isalphabet(r.country)) {
+                printf("\n\t\tInvalid input. Please enter a valid country name\n\n");
+                Return(u);
+                return;
+            }
+            break;
+        default:
+            system("clear");
+            printf("\n\n\t\tInvalid Input !!!!");
+            goto Reselect;
+    }
+
+    if (!dbUpdateAccountDetails(u, r.accountNbr, r, option)) {
+        printf("\n\n\t\tAn error occurred while trying to update account information\n");
+        Return(u);
+        return;
+    }
+    success(u);
+}
+
+void accountList(User u) {
+    Record r;
+    sqlite3_stmt *stmt = NULL;
+    sqlite3 *db = sqliteHandler(DBPATH);
+    if (!db) {
+        sqliteError(db, "Failed to open database: ", stmt);
+    }
+
+    int userid = dbRetrieveUserId(u.name);
+
+    const char *sqlQuery = "SELECT id, country, phone, accountType, accountNbr, amount, "
+                          "deposit_month, deposit_day, deposit_year FROM Records WHERE userId = ?";
+    if (sqlite3_prepare_v2(db, sqlQuery, -1, &stmt, NULL) != SQLITE_OK) {
+        sqliteError(db, "Failed to prepare statement: ", stmt);
+    }
+
+    sqlite3_bind_int(stmt, 1, userid);
+    system("clear");
+    printf("\t\t====== All accounts from user, %s =====\n\n", u.name);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        r.id = sqlite3_column_int(stmt, 0);
+        strcpy(r.country, (const char *)sqlite3_column_text(stmt, 1));
+        r.phone = sqlite3_column_int(stmt, 2);
+        strcpy(r.accountType, (const char *)sqlite3_column_text(stmt, 3));
+        r.accountNbr = sqlite3_column_int(stmt, 4);
+        r.amount = sqlite3_column_double(stmt, 5);
+        r.deposit.month = sqlite3_column_int(stmt, 6);
+        r.deposit.day = sqlite3_column_int(stmt, 7);
+        r.deposit.year = sqlite3_column_int(stmt, 8);
+
+        printf("\n\t\t\t_____________________\n");
+        printf("\n\t\t\tAccount number: %d\n\t\t\tDeposit Date: %d/%d/%d \n\t\t\tCountry: %s \n\t\t\tPhone number: %d \n\t\t\tAmount deposited: $%.2f \n\t\t\tType Of Account: %s\n\t\t\tAccount ID: %d",
+               r.accountNbr, r.deposit.day, r.deposit.month, r.deposit.year, r.country, r.phone, r.amount, r.accountType, r.id);
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    success(u);
+}
+
+void accountDelete(User u) {
+    int userId = dbRetrieveUserId(u.name);
+    int accountId;
+
+    system("clear");
+    printf("\n\t\t\tEnter the Account Number you want to delete : ");
+    accountId = input_number();
+
+    if (!dbAccountExistsForUser(userId, accountId)) {
+        printf("\n\t\t\tAccount ID %d does not Exist for this User", accountId);
+        StayOrReturn(1, accountDelete, u);
+        return;
+    }
+
+    char confirm[5];
+    printf("\n\t\tConfirm deletion of account number '%d'? (y/n): ", accountId);
+    if (fgets(confirm, sizeof(confirm), stdin) != NULL) {
+        trimlinechar(confirm);
+        if (!isstring(confirm, 5) || !isalphabet(confirm)) {
+            printf("\n\t\t\tInvalid input. Please enter a valid option.\n\n");
+            StayOrReturn(0, accountDelete, u);
+            return;
+        }
+    } else {
+        printf("\n\t\t\tError reading input.\n\n");
+        die();
+        return;
+    }
+
+    char c = confirm[0];
+    if (c == 'n' || c == 'N') {
+        printf("\t\t\tAccount deletion cancelled.\n");
+        StayOrReturn(0, accountDelete, u);
+        return;
+    }
+    if (c != 'y' && c != 'Y') {
+        printf("\t\t\tInvalid input.\n");
+        StayOrReturn(0, accountDelete, u);
+        return;
+    }
+
+    if (dbAccountDelete(userId, accountId)) {
+        success(u);
+    } else {
+        printf("\t\t\tAn error occurred while trying to delete account.\n");
+        StayOrReturn(0, mainMenu, u);
+    }
+}
+
+void accountTransfer(User u) {
+    int accnt_id, recipientID;
     
-    printf("\nPress any key to continue...");
-    getchar();
+    system("clear");
+    printf("\n\t\t\t\t\tAccount Transfer\n\n");
+    printf("\t\t\t===========================================\n\n");
+    printf("\n\t\tEnter the Account Number you wish to Transfer: ");
+    accnt_id = input_number();
+
+    int user_id = dbRetrieveUserId(u.name);
+    if (!dbAccountExistsForUser(user_id, accnt_id)) {
+        printf("\n\t\t\tAccount ID %d does not belong to user %s\n", accnt_id, u.name);
+        StayOrReturn(0, accountTransfer, u);
+        return;
+    }
+
+    printf("\n\t\t\tEnter the recipient's ID: ");
+    recipientID = input_number();
+
+    char *recipientName = dbRetrieveUserName(recipientID);
+    if (recipientName == NULL || strlen(recipientName) == 0) {
+        printf("\n\t\t\tUser ID %d does not exist.\n\n", recipientID);
+        StayOrReturn(0, accountTransfer, u);
+        return;
+    }
+
+    dbaccountTransfer(recipientID, accnt_id, recipientName);
+    success(u);
+}
+
+void accountMakeTransaction(User u) {
+    int accnt_id, option = 0;
+    double amount;
+    char transaction_type[10];
+    char input[MAXINPUTLEN];
+
+    int user_id = dbRetrieveUserId(u.name);
+
+    system("clear");
+    printf("\n\t\t\tEnter your Account Number: ");
+    accnt_id = input_number();
+
+    if (!dbAccountExistsForUser(user_id, accnt_id)) {
+        printf("\n\t\t\t✖ Account ID %d does not exist for this user %s\n", accnt_id, u.name);
+        StayOrReturn(0, accountMakeTransaction, u);
+        return;
+    }
+
+    if (!accountAllowsTransactions(user_id, accnt_id, u)) {
+        Return(u);
+        return;
+    }
+
+retry:
+    printf("\n\t\t\t\tMake Transaction");
+    printf("\n\t\t=========================================================\n");
+    printf("\n\t\t\t\tDo you Wish to");
+    printf("\n\t\t[1]- Deposit\n");
+    printf("\n\t\t[2]- Withdraw\n");
+    printf("\n\t\t[3]- go to main menu\n");
+    option = input_number();
+
+    double balance = accountBalance(user_id, accnt_id, u);
+
+    switch (option) {
+        case 1:
+            strcpy(transaction_type, "Deposit");
+            printf("\n\t\tHow much do you wish to deposit: ");
+            if (fgets(input, sizeof(input), stdin) != NULL) {
+                input[strcspn(input, "\n")] = '\0';
+                if (!isvaliddouble(input, &amount)) {
+                    system("clear");
+                    printf("\n\t\tInvalid input. Please enter a valid amount.\n\n");
+                    Return(u);
+                    return;
+                }
+            } else {
+                die();
+            }
+            balance += amount;
+            dbUpdateAccntBalance(user_id, accnt_id, balance, option);
+            break;
+
+        case 2:
+            strcpy(transaction_type, "Withdraw");
+            printf("\n\t\tHow much do you wish to withdraw: ");
+            if (fgets(input, sizeof(input), stdin) != NULL) {
+                input[strcspn(input, "\n")] = '\0';
+                if (!isvaliddouble(input, &amount)) {
+                    system("clear");
+                    printf("\n\t\tInvalid input. Please enter a valid amount.\n\n");
+                    Return(u);
+                    return;
+                }
+            } else {
+                die();
+            }
+            if (balance < amount) {
+                printf("\n\t\t\tInsufficient balance!!!!\n");
+                StayOrReturn(0, accountMakeTransaction, u);
+                return;
+            }
+            balance -= amount;
+            dbUpdateAccntBalance(user_id, accnt_id, balance, option);
+            break;
+
+        case 3:
+            mainMenu(u);
+            return;
+
+        default:
+            system("clear");
+            printf("\n\t\tInvalid Input");
+            goto retry;
+    }
+
+    dbRecordTransaction(accnt_id, transaction_type, amount);
+    printf("\n\t\t\tTransaction successful\n");
+    success(u);
 }
