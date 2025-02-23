@@ -1,113 +1,117 @@
-#ifndef HEADER_H
-#define HEADER_H
+#ifndef _HEADER_H
+#define _HEADER_H
 
+// System includes
+#include <termios.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sqlite3.h>
-#include <crypt.h>
 #include <time.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <ctype.h>
+#include <sqlite3.h>
+#include <unistd.h>
+#include <crypt.h>
 
-// Database configuration
-#define DB_FILE "./data/atm.db"
-
-// Password configuration
+// Constants
+#define MAXINPUTLEN 100
+#define DBPATH "./data/atm.db"
 #define SALT_LENGTH 16
-#define BCRYPT_COST 12  // Work factor for bcrypt
-#define HASH_LENGTH 64  // bcrypt hash length
+#define HASH_LENGTH 64
 
-// Validation constants
-#define MAX_NAME_LENGTH 50
-#define MAX_PHONE_LENGTH 15
-#define MIN_ACCOUNT_NUMBER 100000000  // 9 digits
-#define MAX_ACCOUNT_NUMBER 999999999  // 9 digits
-#define MIN_AMOUNT 0.01
-#define MAX_AMOUNT 1000000.00
-#define MAX_RETRIES 3
+// Structures
+typedef struct {
+    int month, day, year;
+} Date;
 
-// Validation return codes
-#define VALID 0
-#define INVALID_DATE -1
-#define INVALID_ACCOUNT_NUMBER -2
-#define INVALID_PHONE -3
-#define INVALID_AMOUNT -4
-#define INVALID_COUNTRY -5
-#define INVALID_ACCOUNT_TYPE -6
-
-// Database structs
-struct User {
+typedef struct {
     int id;
-    char username[MAX_NAME_LENGTH];
-    char password[HASH_LENGTH];  // Store bcrypt hash
-    char created_at[26];  // ISO 8601 timestamp
-};
-
-struct Account {
-    int id;
-    int user_id;
-    int account_number;
-    char account_type[10];
-    double balance;
+    int userId;
+    char name[100];
     char country[100];
-    char phone[MAX_PHONE_LENGTH];
-    char created_at[26];  // ISO 8601 timestamp
-};
+    int phone;
+    char accountType[100];
+    int accountNbr;
+    double amount;
+    Date deposit;
+    Date withdraw;
+    double Accnt_Balance;
+} Record;
 
-// ValidationResult struct
-struct ValidationResult {
-    int isValid;
-    const char* message;
-};
+typedef struct {
+    int uid;
+    char name[50];
+    char password[HASH_LENGTH];
+} User;
 
-// Validation functions
-void clearInputBuffer(void);
-int validateDate(int month, int day, int year);
-int validateAccountNumber(int accountNum);
-int validatePhone(const char* phone);
-int validateAmount(double amount);
-int validateCountry(const char* country);
-int validateAccountType(const char* accountType);
 
-// Input validation functions
-struct ValidationResult getDateInput(int* month, int* day, int* year);
-struct ValidationResult getAccountNumberInput(int* accountNum);
-struct ValidationResult getPhoneInput(char* phone);
-struct ValidationResult getAmountInput(double* amount);
-struct ValidationResult getCountryInput(char* country);
-struct ValidationResult getAccountTypeInput(char* accountType);
+// Password encryption functions
+char* generate_salt(void);
+char* hash_password(const char* password, const char* salt);
+bool verify_password(const char* password, const char* hashed);
+bool is_hashed_password(const char* password);
 
-// Authentication functions
+// Database Function Declarations
+sqlite3 *sqliteHandler(const char *dbName);
+int sqliteInit(char *dbname);
+void sqliteExecute(sqlite3 *db, const char *sql);
+void sqliteError(sqlite3 *db, const char *message, sqlite3_stmt *stmt);
+
+// User Management Functions
+int dbRetrieveUserId(const char *username);
+char *dbRetrieveUserName(int user_id);
+const char *dbRetrievePassword(User u);
+bool dbUsernameExists(const char *username);
+void dbUserRegister(User u);
+
+// Account Management Functions
+bool dbAccountExistsForUser(int user_id, int account_number);
+bool dbAccountExistsInDatabase(int accountNbr);
+double accountBalance(int userId, int accnt_id, User u);
+bool dbAccountCreate(User u, Record r);
+bool dbFetchAccountDetails(User u, int Accntid, Record *r, double *balance);
+bool dbUpdateAccountDetails(User u, int accountId, Record AccInfo, int option);
+bool dbAccountDelete(int userId, int accountId);
+void dbaccountTransfer(int user_id, int accnt_id, char *name);
+bool accountAllowsTransactions(int userId, int accnt_id, User u);
+void dbRecordTransaction(int accnt_id, char *transaction_type, double amount);
+void dbUpdateAccntBalance(int user_id, int accnt_id, double balance, int option);
+
+// System Utility Functions
+bool isdate(Date date);
+void trimlinechar(char *str);
+bool ispositive(const char *str);
+bool isvaliddouble(const char *str, double *dnum);
+bool isalphabet(char *str);
+bool isleapyear(int year);
+bool isstring(const char *str, size_t n);
+double interest(double amount, char *AccountType);
+
+// Interface Functions
+void initMenu(User *u);
+void mainMenu(User u);
+void registerMenu(User u);
 void loginMenu(char a[50], char pass[50]);
-void registerMenu(char a[50], char pass[50]);
-const char *getPassword(struct User u);
-void hashPassword(const char* password, char* output);
-int verifyPassword(const char* password, const char* hash);
+void accountCreate(User u);
+void accountDetails(User u);
+void accountUpdateInfo(User u);
+void accountList(User u);
+void accountDelete(User u);
+void accountTransfer(User u);
+void accountMakeTransaction(User u);
 
-// System functions
-void createNewAcc(struct User u);
-void mainMenu(struct User u);
-void checkAllAccounts(struct User u);
-void updateAccount(struct User u);
-void makeTransaction(struct User u);
-void checkAccountDetails(struct User u);
-void removeExistingAccount(struct User u);
-void transferOwnership(struct User u);
+// Input/Output Functions
+void input_hide(void);
+void input_show(void);
+int input_number(void);
+void input_string(User u, char *input);
 
-// Notification functions
-void startNotificationListener(const char* username);
-void sendTransferNotification(const char* sender, const char* receiver, 
-                            int accountNum, double balance, const char* accountType);
-void handle_signal(int sig __attribute__((unused)));
+// System Control Functions
+void Return(User u);
+void success(User u);
+void StayOrReturn(int notGood, void (*f)(User), User u);
+void die(void);
 
-// Database functions
-int initDatabase(void);
-int insertUser(const char* username, const char* hashed_password);
-int verifyUser(const char* username, const char* hashed_password);
-int getNextAccountId(void);
-int saveUser(const struct User* user);
-int getUser(const char* username, struct User* user);
-int createAccount(struct Account* account);
-int getAccount(int account_number, struct Account* account);
-int updateBalance(int account_number, double new_balance);
-
-#endif /* HEADER_H */
+#endif // _HEADER_H
