@@ -1,146 +1,175 @@
 # ATM Management System
 
-A comprehensive ATM (Automated Teller Machine) management system written in C, featuring user authentication, account management, secure transactions, and real-time notifications.
+A secure and feature-rich ATM (Automated Teller Machine) management system implemented in C with SQLite database integration and enhanced UI.
 
 ## Features
 
-- **User Authentication**
-  - Secure login/registration system
-  - Password encryption using SHA-256
-  - SQLite database storage
+### User Management
+- Secure user registration with SHA-512 password hashing
+- Login authentication with encrypted passwords
+- Automatic password upgrade from plain text to hashed (backward compatibility)
+- Color-coded user interface for better user experience
 
-- **Account Management**
+### Account Management
+- Multiple account types support:
+  - Savings (7% annual interest)
+  - Current (no interest)
+  - Fixed Deposits:
+    - 1 year: 4% interest
+    - 2 years: 5% interest
+    - 3 years: 8% interest
+- Account operations:
   - Create new accounts
-  - Check account details
+  - View account details and balances
   - Update account information
-  - Remove existing accounts
-  - View list of owned accounts
+  - List all owned accounts
+  - Delete accounts
+  - Transfer account ownership
 
-- **Transaction System**
-  - Deposit funds
-  - Withdraw funds
-  - Transfer between accounts
-  - Real-time balance updates
-  - Transaction history
+### Transaction Management
+- Secure deposit operations
+- Withdraw funds with balance verification
+- Transaction history logging
+- Real-time balance updates
+- Interest calculations based on account type
 
-- **Security Features**
-  - Encrypted password storage
-  - Secure session management
-  - Input validation
-  - Error handling
+## Technical Stack
 
-- **Real-time Notifications**
-  - Account transfer notifications
-  - Transaction alerts
-  - Inter-process communication using pipes
+### Core Technologies
+- Language: C
+- Database: SQLite3
+- Encryption: SHA-512 via libcrypt
+- Build System: Make
 
-## Prerequisites
-
-- GCC Compiler
-- SQLite3
-- OpenSSL
-- Make
-
-### Installing Dependencies (Ubuntu/Debian)
-
-```bash
-sudo apt-get update
-sudo apt-get install -y libsqlite3-dev libssl-dev
+### Project Structure
+```
+.
+├── LICENSE
+├── Makefile
+├── README.md
+├── atm                    # Main executable
+├── data/
+│   └── atm.db            # SQLite database
+├── obj/                  # Compiled objects
+│   ├── *.o              # Object files
+│   └── *.d              # Dependency files
+└── src/
+    ├── database.c        # Database operations
+    ├── header.h          # Main header
+    ├── interface.c       # User interface
+    ├── main.c           # Entry point
+    ├── system.c         # Business logic
+    └── ui.h             # UI components
 ```
 
-## Building the Project
+### Dependencies
+- GCC compiler
+- SQLite3 development libraries
+- libcrypt development libraries
+- ANSI terminal support
 
-1. Clone the repository:
+## Getting Started
+
+### Installation
+
+1. Install required dependencies:
 ```bash
-git clone https://github.com/Stella-Achar-Oiro/atm-management-system.git
+# Ubuntu/Debian
+sudo apt-get install gcc make libsqlite3-dev libcrypt-dev
+
+# Fedora
+sudo dnf install gcc make sqlite-devel libxcrypt-devel
+
+# MacOS (using Homebrew)
+brew install sqlite3 openssl
+```
+
+2. Clone the repository:
+```bash
+git clone https://github.com/yourusername/atm-management-system.git
 cd atm-management-system
-```
-
-2. Create necessary directories and files:
-```bash
-make setup
 ```
 
 3. Build the project:
 ```bash
-make
+make clean    # Clean any previous builds
+make         # Build the project
 ```
 
-## Running the Program
-
-After building, run the ATM system:
+### Running the Application
 ```bash
-./atm
+./atm        # Run the ATM system
 ```
 
-## Project Structure
+## Usage Guide
 
+### First Time Setup
+1. Launch the application
+2. Choose Register option
+3. Enter username and password
+4. Login with created credentials
+
+### Account Operations
+1. Create Account:
+   - Select account type
+   - Enter initial deposit
+   - Provide required details
+
+2. Transactions:
+   - Select Make Transaction
+   - Choose deposit or withdraw
+   - Enter amount
+   - Confirm transaction
+
+3. Account Management:
+   - View account details
+   - Update information
+   - Transfer ownership
+   - Delete accounts
+
+## Security Features
+- SHA-512 password hashing
+- Prepared SQL statements preventing injection
+- Input validation and sanitization
+- Hidden password entry
+- Secure memory handling
+- Transaction verification
+
+## Development
+
+### Building for Development
+```bash
+make debug   # Build with debug symbols
 ```
-.
-├── src/
-│   ├── main.c           # Main program entry
-│   ├── auth.c           # Authentication functions
-│   ├── system.c         # Core system functions
-│   ├── notification.c   # Notification system
-│   ├── database.c       # Database operations
-│   ├── encryption.c     # Password encryption
-│   └── header.h         # Header declarations
-├── data/                # Data storage
-│   ├── users.txt        # User records
-│   └── records.txt      # Account records
-├── build/               # Compiled objects
-├── Makefile            # Build configuration
-└── README.md           # This file
-```
 
-## Available Commands
-
-- `make`: Build the project
-- `make setup`: Create necessary directories and files
-- `make clean`: Remove built files
-- `make cleanall`: Remove all generated files including data
-- `make install-deps`: Install required system libraries
-
-## Features in Detail
-
-### Account Types
-- Current Account
-- Savings Account (7% interest)
-- Fixed01 (1 year, 4% interest)
-- Fixed02 (2 year, 5% interest)
-- Fixed03 (3 year, 8% interest)
-
-### Transaction Rules
-- Fixed accounts cannot perform transactions
-- Savings accounts earn monthly interest
-- Current accounts have no transaction limits
-
-## Security Notes
-
-- Passwords are hashed using SHA-256
-- User data is stored in SQLite database
-- File operations use secure temporary files
-- Input validation prevents buffer overflows
-- Process isolation for notification system
+### Available Make Commands
+- `make`: Build release version
+- `make debug`: Build debug version
+- `make clean`: Clean build files
+- `make run`: Build and run
+- `make help`: Show all commands
 
 ## Contributing
-
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## Future Roadmap
+- Multi-factor authentication
+- Transaction limits
+- PDF statement generation
+- Joint accounts
+- Admin dashboard
+- Automated backups
+- Mobile number verification
+- Email notifications
 
 ## License
-
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Author
-
-- Stella Achar Oiro
-
 ## Acknowledgments
-
-- Original project requirements from system design documentation
-- OpenSSL and SQLite3 documentation
-- C Programming best practices guides
+- SQLite for database management
+- GNU C Library for encryption
+- ANSI for terminal coloring support
