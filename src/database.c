@@ -1,5 +1,7 @@
 #include "header.h"
 
+// ============= Password Encryption Functions =============
+
 char* generate_salt(void) {
     static char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./";
     static char salt[SALT_LENGTH + 1] = "$6$";  // Using SHA-512
