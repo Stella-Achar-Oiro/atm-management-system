@@ -86,7 +86,7 @@ brew install sqlite3 openssl
 
 2. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/atm-management-system.git
+git clone https://github.com/Stella-Achar-Oiro/atm-management-system.git
 cd atm-management-system
 ```
 
