@@ -1,64 +1,74 @@
-# Compiler settings
-CC = gcc
-CFLAGS = -Wall -Wextra -I./src
-LDFLAGS = -lsqlite3 -lcrypt
+# Compiler and flags
+CC := gcc
+CFLAGS := -Wall -Wextra -O2 -march=native
+CFLAGS_DEBUG := $(CFLAGS) -g3 -DDEBUG
+LDFLAGS := -lsqlite3 -lcrypt
 
-# Directory structure
-SRC_DIR = src
-BUILD_DIR = build
-DATA_DIR = data
+# Directories
+SRC_DIR := src
+OBJ_DIR := obj
+BUILD_DIR := build
 
-# Source files and objects
-SOURCES = $(wildcard $(SRC_DIR)/*.c)
-OBJECTS = $(SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+# Target executable
+TARGET := atm
 
-# Output binary
-TARGET = atm
-MIGRATION = migration
+# Source files
+SRC_FILES := $(wildcard $(SRC_DIR)/*.c)
+OBJ_FILES := $(SRC_FILES:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+DEP_FILES := $(OBJ_FILES:.o=.d)
+
+# Colors for terminal output
+CYAN := \033[36m
+RESET := \033[0m
 
 # Default target
-all: setup $(TARGET) $(MIGRATION)
+all: release
 
-# Linking the main program
-$(TARGET): $(filter-out $(BUILD_DIR)/migration.o, $(OBJECTS))
-	$(CC) $^ -o $@ $(LDFLAGS)
+# Release build
+release: CFLAGS += -O2
+release: directories $(TARGET)
 
-# Linking the migration utility
-$(MIGRATION): $(BUILD_DIR)/migration.o $(BUILD_DIR)/database.o $(BUILD_DIR)/encryption.o
-	$(CC) $^ -o $@ $(LDFLAGS)
-
-
-# Compiling source files
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(SRC_DIR)/header.h
-	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+# Debug build
+debug: CFLAGS := $(CFLAGS_DEBUG)
+debug: directories $(TARGET)
 
 # Create necessary directories
-setup:
-	@mkdir -p $(DATA_DIR) $(BUILD_DIR)
+directories:
+	@mkdir -p $(OBJ_DIR)
+	@mkdir -p data
 
-# Install dependencies (Ubuntu/Debian)
-install-deps:
-	@echo "Installing required packages..."
-	@sudo apt-get update
-	@sudo apt-get install -y libsqlite3-dev libcrypt-dev
+# Compile source files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	@echo "$(CYAN)Compiling $<$(RESET)"
+	@$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+
+# Link the executable
+$(TARGET): $(OBJ_FILES)
+	@echo "$(CYAN)Linking $@$(RESET)"
+	@$(CC) $^ $(LDFLAGS) -o $@
+	@echo "$(CYAN)Build complete!$(RESET)"
+
+# Run the program
+run: release
+	@echo "$(CYAN)Running ATM System...$(RESET)"
+	@./$(TARGET)
 
 # Clean build files
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET) $(MIGRATION)
+	@echo "$(CYAN)Cleaning build files...$(RESET)"
+	@rm -rf $(OBJ_DIR) $(BUILD_DIR) $(TARGET) bin
+	@echo "$(CYAN)Clean complete!$(RESET)"
 
-# Clean all generated files including database
-cleanall: clean
-	rm -f $(DATA_DIR)/atm.db
-	rm -rf $(DATA_DIR)
+# Include dependency files
+-include $(DEP_FILES)
 
-# Help target
+# Development help commands
 help:
-	@echo "ATM Management System - Build Targets"
-	@echo "make              - Build the ATM system"
-	@echo "make install-deps - Install required dependencies"
-	@echo "make clean        - Remove build files"
-	@echo "make cleanall     - Remove all generated files"
-	@echo "make help         - Display this help message"
+	@echo "$(CYAN)Available commands:$(RESET)"
+	@echo "  make          - Build release version"
+	@echo "  make debug    - Build debug version"
+	@echo "  make run      - Build and run the program"
+	@echo "  make clean    - Remove build files"
+	@echo "  make help     - Show this help message"
 
-.PHONY: all setup clean cleanall help install-deps
+.PHONY: all release debug clean run help directories
