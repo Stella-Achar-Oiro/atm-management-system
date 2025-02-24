@@ -1,4 +1,5 @@
 #include "header.h"
+#include "ui.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -22,11 +23,12 @@ int main() {
 
     // Initialize database
     if (!sqliteInit(DBPATH)) {
-        printf("\n\tFailed to initialize database. Exiting...\n");
+        print_error("Failed to initialize database. Exiting...");
         return EXIT_FAILURE;
     }
 
-    // Start the ATM system
+    // Clear screen and start the ATM system
+    clear_screen();
     initMenu(&u);
     mainMenu(u);
 

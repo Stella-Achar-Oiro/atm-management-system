@@ -1,4 +1,5 @@
 #include "header.h"
+#include "ui.h"
 
 // ============= Password Encryption Functions =============
 
@@ -35,8 +36,11 @@ int sqliteInit(char *dbname) {
     sqlite3 *db = NULL;
     int rc = sqlite3_open(dbname, &db);
     if (rc != SQLITE_OK) {
+        print_error("Failed to open database");
         return 0;
     }
+
+    print_processing("Initializing database");
 
     // Create tables if they don't exist
     const char *sqlUsersTable = 
@@ -91,15 +95,16 @@ sqlite3 *sqliteHandler(const char *dbName) {
 void sqliteExecute(sqlite3 *db, const char *sql) {
     sqlite3_stmt *stmt = NULL;
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        sqliteError(db, "Failed to Prepare statement", stmt);
+        sqliteError(db, "Failed to prepare statement", stmt);
     }
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        sqliteError(db, "Execution Failed", stmt);
+        sqliteError(db, "Execution failed", stmt);
     }
     sqlite3_finalize(stmt);
 }
 
 void sqliteError(sqlite3 *db, const char *message, sqlite3_stmt *stmt) {
+    print_error(message);
     fprintf(stderr, "%s: %s\n", message, sqlite3_errmsg(db));
     if (stmt != NULL) sqlite3_finalize(stmt);
     if (db != NULL) sqlite3_close(db);
@@ -145,7 +150,7 @@ char *dbRetrieveUserName(int user_id) {
         const unsigned char *text = sqlite3_column_text(stmt, 0);
         if (text) {
             name = strdup((const char *)text);
-            if (!name) sqliteError(db, "Memory Allocation Failed", stmt);
+            if (!name) sqliteError(db, "Memory allocation failed", stmt);
         }
     }
 
@@ -329,7 +334,7 @@ bool dbFetchAccountDetails(User u, int Accntid, Record *r, double *balance) {
     bool success = false;
 
     if (!dbAccountExistsForUser(userid, Accntid)) {
-        printf("\n\t✖ The Account ID You Entered does not exist for this user\n\n");
+        print_error("Account does not exist for this user");
         sqlite3_close(db);
         return false;
     }
@@ -440,7 +445,7 @@ bool accountAllowsTransactions(int userId __attribute__((unused)), int accnt_id,
         const char *account_type = (const char *)sqlite3_column_text(stmt, 0);
         allows = (strcmp(account_type, "saving") == 0);
         if (!allows) {
-            printf("\n\t\tTransactions are not allowed for account type %s\n", account_type);
+            print_error("Transactions not allowed for this account type");
         }
     }
 
@@ -457,7 +462,7 @@ bool dbUpdateAccountDetails(User u, int accountId, Record AccInfo, int option) {
 
     int userid = dbRetrieveUserId(u.name);
     if (!dbAccountExistsForUser(userid, accountId)) {
-        printf("\n\t✖ The Account Number You Entered does not exist\n\n");
+        print_error("Account does not exist");
         sqlite3_close(db);
         return false;
     }
@@ -522,7 +527,7 @@ bool dbAccountDelete(int userId, int accountId) {
 
     bool success = (sqlite3_step(stmt) == SQLITE_DONE);
     if (success) {
-        printf("\n\t\t\tSuccessfully deleted account number '%d'.\n", accountId);
+        SUCCESS_MSG("Account deleted successfully");
     }
 
     sqlite3_finalize(stmt);

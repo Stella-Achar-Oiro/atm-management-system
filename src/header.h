@@ -46,6 +46,11 @@ typedef struct {
     char password[HASH_LENGTH];
 } User;
 
+void safe_clear_screen(void);
+bool is_valid_phone(int number);
+bool is_valid_account_number(int number);
+bool is_valid_username(const char* name);
+bool is_valid_password(const char* password);
 
 // Password encryption functions
 char* generate_salt(void);
@@ -106,6 +111,7 @@ void accountMakeTransaction(User u);
 void input_hide(void);
 void input_show(void);
 int input_number(void);
+int input_number_with_validation(const char* prompt, bool (*validator)(int));
 void input_string(User u, char *input);
 
 // System Control Functions

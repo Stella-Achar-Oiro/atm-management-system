@@ -65,10 +65,10 @@ clean:
 # Development help commands
 help:
 	@echo "$(CYAN)Available commands:$(RESET)"
-	@echo "  make          - Build release version"
-	@echo "  make debug    - Build debug version"
-	@echo "  make run      - Build and run the program"
-	@echo "  make clean    - Remove build files"
-	@echo "  make help     - Show this help message"
+	@echo " make - Build release version"
+	@echo " make debug - Build debug version"
+	@echo " make run - Build and run the program"
+	@echo " make clean - Remove build files"
+	@echo " make help - Show this help message"
 
 .PHONY: all release debug clean run help directories

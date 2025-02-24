@@ -28,9 +28,10 @@ void input_string(User u, char *input) {
         }
         trimlinechar(input);
         if (!isstring(input, MAXINPUTLEN)) {
-            system("clear");
-            printf("\n\t\tInvalid input. Please enter a valid Input.\n\n");
-            Return(u);
+            if (system("clear") != -1) {
+                printf("\n\t\tInvalid input. Please enter a valid Input.\n\n");
+                Return(u);
+            }
         }
     } else {
         die();
@@ -61,6 +62,18 @@ int input_number() {
         } else {
             printf("\n\t\tError reading input. Please try again...");
         }
+    }
+}
+
+int input_number_with_validation(const char* prompt, bool (*validator)(int)) {
+    while (1) {
+        print_input_prompt(prompt);
+        int num = input_number();
+        
+        if (validator(num)) {
+            return num;
+        }
+        print_error("Invalid input - please enter a valid number");
     }
 }
 
@@ -195,18 +208,18 @@ void registerMenu(User u) {
     char confirmPwd[MAXINPUTLEN];
 
     while (1) {
-        printf("\n\t\tEnter Your Name >>>_");
+        print_input_prompt("Enter Your Name");
         if (fgets(u.name, sizeof(u.name), stdin) != NULL) {
             trimlinechar(u.name);
 
-            if (!isstring(u.name, MAXINPUTLEN)) {
-                system("clear");
-                printf("\n\t\t\tName too long. Please input a shorter name.\n\n");
+            if (!is_valid_username(u.name)) {
+                clear_screen();
+                print_error("Invalid username. Must be 3-30 characters and contain non-space characters.");
                 continue;
             }
             if (!isalphabet(u.name)) {
-                system("clear");
-                printf("\n\t\tInvalid input. Please enter a valid name\n\n");
+                clear_screen();
+                print_error("Invalid input. Please enter a valid name using only letters");
                 continue;
             }
         } else {
@@ -214,8 +227,8 @@ void registerMenu(User u) {
         }
 
         if (dbUsernameExists(u.name)) {
-            system("clear");
-            printf("\n\t\tUsername exists. Please choose a different name.\n");
+            clear_screen();
+            print_error("Username exists. Please choose a different name.");
             continue;
         }
         break;
@@ -223,12 +236,11 @@ void registerMenu(User u) {
 
     while (1) {
         input_hide();
-
-        printf("\n\t\tNew Password >>>_");
+        print_input_prompt("New Password");
         if (fgets(u.password, sizeof(u.password), stdin) != NULL) {
             trimlinechar(u.password);
-            if (!isstring(u.password, MAXINPUTLEN)) {
-                printf("\n\t\t\tInvalid input. Please enter a valid password.\n\n");
+            if (!is_valid_password(u.password)) {
+                print_error("Password must be at least 6 characters and not just spaces");
                 continue;
             }
         } else {
@@ -263,33 +275,36 @@ void registerMenu(User u) {
 }
 
 void loginMenu(char a[50], char pass[50]) {
-    system("clear");
-    printf("\n\n\n\t\t\t\t   Bank Management System\n\t\t\t\t\t User Login >>>_");
+    if (clear_screen() != -1) {  // Replace system("clear")
+        print_header("Bank Management System");
+        print_input_prompt("User Login");
+    }
+    
     if (fgets(a, 50, stdin) != NULL) {
         trimlinechar(a);
 
         if (!isstring(a, 50)) {
-            system("clear");
-            printf("\n\t\t\tInvalid input. Please enter a valid Name.\n\n");
+            clear_screen();  // Replace system("clear")
+            print_error("Invalid input. Please enter a valid Name.");
             exit(0);
         }
         if (!isalphabet(a)) {
-            system("clear");
-            printf("\n\tInvalid input. Please enter a valid name\n\n");
+            clear_screen();  // Replace system("clear")
+            print_error("Invalid input. Please enter a valid name");
             exit(0);
         }
     } else {
         die();
     }
 
-    input_hide();
-    printf("\n\n\n\n\n\t\t\t\tUser Password >>>_");
+     input_hide();
+    print_input_prompt("User Password");
     if (fgets(pass, 50, stdin) != NULL) {
         trimlinechar(pass);
 
         if (!isstring(pass, 50)) {
-            system("clear");
-            printf("\n\t\t\tInvalid input. Please enter a valid Input.\n\n");
+            clear_screen();
+            print_error("Invalid input. Please enter a valid Input.");
             exit(0);
         }
     } else {
