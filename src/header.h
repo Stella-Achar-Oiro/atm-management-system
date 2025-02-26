@@ -69,7 +69,7 @@ int dbRetrieveUserId(const char *username);
 char *dbRetrieveUserName(int user_id);
 const char *dbRetrievePassword(User u);
 bool dbUsernameExists(const char *username);
-void dbUserRegister(User u);
+int dbUserRegister(User u);
 
 // Account Management Functions
 bool dbAccountExistsForUser(int user_id, int account_number);
