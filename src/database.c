@@ -182,9 +182,10 @@ const char* dbRetrievePassword(User u) {
     return hashed_pass;
 }
 
-void dbUserRegister(User u) {
+int dbUserRegister(User u) {
     sqlite3 *db = sqliteHandler(DBPATH);
     sqlite3_stmt *stmt = NULL;
+    int user_id = -1;
 
     const char *sql = "INSERT INTO USERS (username, password) VALUES (?, ?);";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -202,9 +203,14 @@ void dbUserRegister(User u) {
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         sqliteError(db, "Failed to register user", stmt);
     }
+    
+    // Get the ID of the newly registered user
+    user_id = sqlite3_last_insert_rowid(db);
 
     sqlite3_finalize(stmt);
     sqlite3_close(db);
+    
+    return user_id;
 }
 
 bool dbUsernameExists(const char *username) {
