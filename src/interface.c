@@ -206,20 +206,21 @@ void mainMenu(User u) {
 
 void registerMenu(User u) {
     char confirmPwd[MAXINPUTLEN];
+    int user_id; // Declare user_id at the beginning of the function
 
     while (1) {
         print_input_prompt("Enter Your Name");
         if (fgets(u.name, sizeof(u.name), stdin) != NULL) {
             trimlinechar(u.name);
 
-            if (!is_valid_username(u.name)) {
+            if (!isstring(u.name, MAXINPUTLEN)) {
                 clear_screen();
-                print_error("Invalid username. Must be 3-30 characters and contain non-space characters.");
+                print_error("Name too long. Please input a shorter name.");
                 continue;
             }
             if (!isalphabet(u.name)) {
                 clear_screen();
-                print_error("Invalid input. Please enter a valid name using only letters");
+                print_error("Invalid input. Please enter a valid name");
                 continue;
             }
         } else {
@@ -236,22 +237,23 @@ void registerMenu(User u) {
 
     while (1) {
         input_hide();
+
         print_input_prompt("New Password");
         if (fgets(u.password, sizeof(u.password), stdin) != NULL) {
             trimlinechar(u.password);
-            if (!is_valid_password(u.password)) {
-                print_error("Password must be at least 6 characters and not just spaces");
+            if (!isstring(u.password, MAXINPUTLEN)) {
+                print_error("Invalid input. Please enter a valid password.");
                 continue;
             }
         } else {
             die();
         }
 
-        printf("\n\t\tConfirm Password >>>_");
+        print_input_prompt("Confirm Password");
         if (fgets(confirmPwd, sizeof(confirmPwd), stdin) != NULL) {
             trimlinechar(confirmPwd);
             if (!isstring(confirmPwd, MAXINPUTLEN)) {
-                printf("\n\t\t\tInvalid input. Please enter a valid password.\n\n");
+                print_error("Invalid input. Please enter a valid password.");
                 continue;
             }
         } else {
@@ -263,14 +265,26 @@ void registerMenu(User u) {
         if (strcmp(u.password, confirmPwd) == 0) {
             break;
         } else {
-            printf("\n\t\tPasswords do not match!!!\n");
+            print_error("Passwords do not match!");
             exit(0);
         }
     }
 
-    dbUserRegister(u);
+    // Register the user and get the ID
+    user_id = dbUserRegister(u);
 
-    printf("\n\t\tUser registered successfully!!!\n\n");
+    // Show success message with user ID
+    clear_screen();
+    SUCCESS_MSG("User registered successfully!");
+    printf("\n%sIMPORTANT:%s Your User ID is %s%d%s\n", 
+           COLOR_YELLOW, COLOR_RESET, 
+           COLOR_GREEN, user_id, COLOR_RESET);
+    printf("Please note this down for future reference.\n\n");
+    
+    // Pause to let user read the ID
+    printf("Press Enter to continue to the main menu...");
+    getchar();
+    
     mainMenu(u);
 }
 
